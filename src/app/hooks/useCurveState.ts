@@ -19,12 +19,28 @@ interface CurveState {
   activePresetId: string | null;
 }
 
+export interface ConstructionLine {
+  from: CurvePoint;
+  to: CurvePoint;
+  style: "secant" | "tangent" | "vertical";
+}
+
+export interface LabeledPoint {
+  point: CurvePoint;
+  color: string;
+  label: string;
+}
+
 export interface StepData {
   label: string;
   explanation: string;
   formula?: string;
-  highlightLine?: { from: CurvePoint; to: CurvePoint };
-  highlightPoint?: CurvePoint;
+  /** Lines to draw at this step (accumulated from step 0 to current) */
+  lines?: ConstructionLine[];
+  /** Extra labeled points to show at this step */
+  points?: LabeledPoint[];
+  /** Trail of points for orbit visualization */
+  trail?: CurvePoint[];
 }
 
 type Action =
@@ -104,43 +120,56 @@ export function useCurveState() {
       const mod = (n: number) => ((n % state.p) + state.p) % state.p;
       const dx = mod(q.x - p.x);
       const dy = mod(q.y - p.y);
+      const secant: ConstructionLine = { from: p, to: q, style: "secant" };
       const steps: StepData[] = [
         {
           label: "Draw secant line",
           explanation: `Line through P(${p.x}, ${p.y}) and Q(${q.x}, ${q.y})`,
-          highlightLine: { from: p, to: q },
+          lines: [secant],
         },
         {
           label: "Compute slope",
           explanation: `s = (${q.y} - ${p.y}) \u00b7 (${q.x} - ${p.x})\u207b\u00b9 mod ${state.p}`,
           formula: `s \\equiv ${dy} \\cdot ${dx}^{-1} \\pmod{${state.p}}`,
+          lines: [secant],
         },
         {
-          label: "Compute result",
+          label: "Result",
           explanation: result ? `R = (${result.x}, ${result.y})` : "R = O (point at infinity)",
-          highlightPoint: result ?? undefined,
+          lines: [secant],
+          points: result ? [{ point: result, color: "#06D6A0", label: "R" }] : [],
         },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
     } else {
       const result = realCurve.addPoints(p, q);
       const s = (q.y - p.y) / (q.x - p.x);
+      const rPrime: CurvePoint = { x: result.x, y: -result.y };
+      const secant: ConstructionLine = { from: p, to: q, style: "secant" };
+      const vertical: ConstructionLine = { from: rPrime, to: result, style: "vertical" };
       const steps: StepData[] = [
         {
           label: "Draw secant line",
-          explanation: `Line through P(${p.x.toFixed(2)}, ${p.y.toFixed(2)}) and Q(${q.x.toFixed(2)}, ${q.y.toFixed(2)})`,
-          formula: `s = \\frac{y_2 - y_1}{x_2 - x_1} = \\frac{${(q.y - p.y).toFixed(2)}}{${(q.x - p.x).toFixed(2)}} = ${s.toFixed(4)}`,
-          highlightLine: { from: p, to: q },
+          explanation: `Secant through P and Q with slope s`,
+          formula: `s = \\frac{y_Q - y_P}{x_Q - x_P} = \\frac{${(q.y - p.y).toFixed(2)}}{${(q.x - p.x).toFixed(2)}} = ${s.toFixed(4)}`,
+          lines: [secant],
         },
         {
-          label: "Find third intersection",
-          explanation: `The line intersects the curve at R'(${result.x.toFixed(2)}, ${(-result.y).toFixed(2)})`,
-          highlightPoint: { x: result.x, y: -result.y },
+          label: "Third intersection R'",
+          explanation: `The secant meets the curve again at R'(${rPrime.x.toFixed(2)}, ${rPrime.y.toFixed(2)})`,
+          formula: `x_{R'} = s^2 - x_P - x_Q = ${result.x.toFixed(4)}`,
+          lines: [secant],
+          points: [{ point: rPrime, color: "#A78BFA", label: "R'" }],
         },
         {
           label: "Reflect over x-axis",
           explanation: `R = P + Q = (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`,
-          highlightPoint: result,
+          formula: `R = (x_{R'},\\, -y_{R'})`,
+          lines: [secant, vertical],
+          points: [
+            { point: rPrime, color: "#A78BFA", label: "R'" },
+            { point: result, color: "#06D6A0", label: "R = P+Q" },
+          ],
         },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
@@ -149,39 +178,88 @@ export function useCurveState() {
 
   const doublePoint = useCallback(() => {
     if (!state.selectedP) return;
-    const p = state.selectedP;
+    const pt = state.selectedP;
 
     if (state.mode === "finite") {
-      const result = finiteCurve.doublePoint(p);
+      const result = finiteCurve.doublePoint(pt);
+      const tangent: ConstructionLine = { from: pt, to: result, style: "tangent" };
       const steps: StepData[] = [
-        { label: "Tangent at P", explanation: `Compute tangent slope at P(${p.x}, ${p.y})`, formula: `s \\equiv (3x^2 + a) \\cdot (2y)^{-1} \\pmod{${state.p}}` },
-        { label: "Result", explanation: `2P = (${result.x}, ${result.y})`, highlightPoint: result },
+        {
+          label: "Tangent at P",
+          explanation: `Compute tangent slope at P(${pt.x}, ${pt.y})`,
+          formula: `s \\equiv (3x^2 + a) \\cdot (2y)^{-1} \\pmod{${state.p}}`,
+          lines: [tangent],
+        },
+        {
+          label: "Result",
+          explanation: `2P = (${result.x}, ${result.y})`,
+          lines: [tangent],
+          points: [{ point: result, color: "#06D6A0", label: "2P" }],
+        },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
     } else {
-      const result = realCurve.doublePoint(p);
+      const result = realCurve.doublePoint(pt);
+      const rPrime: CurvePoint = { x: result.x, y: -result.y };
+      const tangent: ConstructionLine = { from: pt, to: rPrime, style: "tangent" };
+      const vertical: ConstructionLine = { from: rPrime, to: result, style: "vertical" };
+      const s = (3 * pt.x * pt.x + state.a) / (2 * pt.y);
       const steps: StepData[] = [
-        { label: "Tangent at P", explanation: `Draw tangent to the curve at P(${p.x.toFixed(2)}, ${p.y.toFixed(2)})`, formula: `s = \\frac{3x^2 + a}{2y}` },
-        { label: "Reflect", explanation: `2P = (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`, highlightPoint: result },
+        {
+          label: "Draw tangent at P",
+          explanation: `Tangent to the curve at P(${pt.x.toFixed(2)}, ${pt.y.toFixed(2)})`,
+          formula: `s = \\frac{3x_P^2 + a}{2y_P} = \\frac{${(3 * pt.x * pt.x + state.a).toFixed(2)}}{${(2 * pt.y).toFixed(2)}} = ${s.toFixed(4)}`,
+          lines: [tangent],
+        },
+        {
+          label: "Second intersection R'",
+          explanation: `The tangent meets the curve again at R'(${rPrime.x.toFixed(2)}, ${rPrime.y.toFixed(2)})`,
+          lines: [tangent],
+          points: [{ point: rPrime, color: "#A78BFA", label: "R'" }],
+        },
+        {
+          label: "Reflect over x-axis",
+          explanation: `2P = (${result.x.toFixed(2)}, ${result.y.toFixed(2)})`,
+          formula: `2P = (x_{R'},\\, -y_{R'})`,
+          lines: [tangent, vertical],
+          points: [
+            { point: rPrime, color: "#A78BFA", label: "R'" },
+            { point: result, color: "#06D6A0", label: "2P" },
+          ],
+        },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
     }
-  }, [state.selectedP, state.mode, realCurve, finiteCurve, state.p]);
+  }, [state.selectedP, state.mode, state.a, realCurve, finiteCurve, state.p]);
 
   const computeInverse = useCallback(() => {
     if (!state.selectedP) return;
-    const p = state.selectedP;
+    const pt = state.selectedP;
 
     if (state.mode === "finite") {
-      const inv = finiteCurve.inversePoint(p);
+      const inv = finiteCurve.inversePoint(pt);
+      const vertical: ConstructionLine = { from: pt, to: inv, style: "vertical" };
       const steps: StepData[] = [
-        { label: "Inverse", explanation: `-P = (${p.x}, ${state.p} - ${p.y}) = (${inv.x}, ${inv.y})`, highlightPoint: inv },
+        {
+          label: "Reflect over x-axis",
+          explanation: `-P = (${pt.x}, ${state.p} - ${pt.y}) = (${inv.x}, ${inv.y})`,
+          formula: `-P = (x,\\, p - y) = (${pt.x},\\, ${state.p} - ${pt.y})`,
+          lines: [vertical],
+          points: [{ point: inv, color: "#06D6A0", label: "-P" }],
+        },
       ];
       dispatch({ type: "SET_RESULT", result: inv, steps });
     } else {
-      const inv = realCurve.inversePoint(p);
+      const inv = realCurve.inversePoint(pt);
+      const vertical: ConstructionLine = { from: pt, to: inv, style: "vertical" };
       const steps: StepData[] = [
-        { label: "Inverse", explanation: `-P = (${p.x.toFixed(2)}, ${(-p.y).toFixed(2)})`, highlightPoint: inv },
+        {
+          label: "Reflect over x-axis",
+          explanation: `-P = (${pt.x.toFixed(2)}, ${inv.y.toFixed(2)})`,
+          formula: `-P = (x_P,\\, -y_P)`,
+          lines: [vertical],
+          points: [{ point: inv, color: "#06D6A0", label: "-P" }],
+        },
       ];
       dispatch({ type: "SET_RESULT", result: inv, steps });
     }
@@ -211,11 +289,13 @@ export function useCurveState() {
     const steps: StepData[] = orbit.map((pt, i) => ({
       label: `${i + 1}P`,
       explanation: `${i + 1}P = (${pt.x}, ${pt.y})`,
-      highlightPoint: pt,
+      trail: orbit.slice(0, i + 1),
+      points: [{ point: pt, color: "#06D6A0", label: `${i + 1}P` }],
     }));
     steps.push({
       label: `${order}P = O`,
       explanation: `Order of P is ${order}${isGen ? " — P is a generator of the full group!" : ""}`,
+      trail: orbit,
     });
     dispatch({ type: "SET_RESULT", result: null, steps });
   }, [state.selectedP, state.mode, finiteCurve]);

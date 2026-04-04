@@ -104,15 +104,23 @@ export function App() {
         onPrev={() => dispatch({ type: "PREV_STEP" })}
       />
 
-      {/* Overlays */}
+      {/* Point count overlay */}
       {state.mode === "finite" && isPrimeValid && pointCount !== null && (
-        <div className="point-count-overlay" style={{
+        <div style={{
           position: "fixed",
           top: "80px",
           right: "16px",
           zIndex: 5,
+          fontFamily: "var(--md-sys-typescale-code-font)",
+          fontSize: "13px",
+          color: "var(--md-sys-color-on-surface-variant)",
+          background: "rgba(13, 17, 23, 0.85)",
+          padding: "6px 14px",
+          borderRadius: "var(--md-sys-shape-corner-small)",
+          backdropFilter: "blur(8px)",
+          border: "1px solid var(--md-sys-color-outline-variant)",
         }}>
-          <strong>{pointCount}</strong> affine points + O
+          |E(𝔽<sub>{state.p}</sub>)| = <strong style={{ color: "var(--md-sys-color-primary)" }}>{pointCount + 1}</strong> <span style={{ opacity: 0.6 }}>({pointCount} + O)</span>
         </div>
       )}
     </div>

@@ -373,38 +373,7 @@ input[type="number"]:focus {
   cursor: crosshair;
 }
 
-.equation-overlay {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  font-family: var(--md-sys-typescale-code-font);
-  font-size: 15px;
-  color: var(--md-sys-color-on-surface);
-  background: rgba(13, 17, 23, 0.85);
-  padding: 8px 16px;
-  border-radius: var(--md-sys-shape-corner-small);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.point-count-overlay {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-family: var(--md-sys-typescale-body-font);
-  font-size: 13px;
-  color: var(--md-sys-color-on-surface-variant);
-  background: rgba(13, 17, 23, 0.85);
-  padding: 8px 16px;
-  border-radius: var(--md-sys-shape-corner-small);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--md-sys-color-outline-variant);
-}
-
-.point-count-overlay strong {
-  color: var(--md-sys-color-primary);
-  font-weight: 600;
-}
+/* Removed equation-overlay and point-count-overlay — now rendered on canvas / as fixed overlays */
 
 /* ===== Step Panel ===== */
 
