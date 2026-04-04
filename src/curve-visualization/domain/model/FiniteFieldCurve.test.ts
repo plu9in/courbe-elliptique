@@ -202,13 +202,59 @@ describe("FiniteFieldCurve", () => {
   });
 
   it("does not return null when two different points share the same x but are not inverses", () => {
-    // On this curve, if x1===x2 and points are different, they MUST be inverses.
-    // So this tests that having different x values doesn't wrongly trigger null.
     const curve = new FiniteFieldCurve(1, 1, 23);
 
     const result = curve.addPoints({ x: 1, y: 7 }, { x: 0, y: 1 });
 
     expect(result).not.toBeNull();
     expect(curve.isPointOnCurve(result!.x, result!.y)).toBe(true);
+  });
+
+  it("scalar multiply by 1 returns the point itself", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    expect(curve.scalarMultiply(p, 1)).toEqual(p);
+  });
+
+  it("scalar multiply by 2 equals doubling", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    expect(curve.scalarMultiply(p, 2)).toEqual(curve.doublePoint(p));
+  });
+
+  it("scalar multiply by 3 equals 2P + P", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+    const expected = curve.addPoints(curve.doublePoint(p), p);
+
+    expect(curve.scalarMultiply(p, 3)).toEqual(expected);
+  });
+
+  it("scalar multiply by 5 produces a point on the curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    const result = curve.scalarMultiply(p, 5);
+
+    expect(result).not.toBeNull();
+    expect(curve.isPointOnCurve(result!.x, result!.y)).toBe(true);
+  });
+
+  it("scalar multiply by the order of the point returns identity", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    // Find order: keep multiplying until we get null
+    let order = 1;
+    let current = curve.scalarMultiply(p, order);
+    while (current !== null && order < 100) {
+      order++;
+      current = curve.scalarMultiply(p, order);
+    }
+
+    expect(current).toBeNull();
+    expect(order).toBeGreaterThan(1);
   });
 });

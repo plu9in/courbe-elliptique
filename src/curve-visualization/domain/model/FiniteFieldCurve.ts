@@ -60,6 +60,15 @@ export class FiniteFieldCurve {
     return { x: x3, y: y3 };
   }
 
+  scalarMultiply(pt: CurvePoint, n: number): CurvePoint | null {
+    if (n === 1) return pt;
+    let result: CurvePoint | null = pt;
+    for (let i = 1; i < n; i++) {
+      result = this.addPoints(result, pt);
+    }
+    return result;
+  }
+
   isPointOnCurve(x: number, y: number): boolean {
     return (y * y) % this.p === this.evaluateAt(x);
   }
