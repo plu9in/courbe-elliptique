@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import type { EllipticCurve } from "../../curve-visualization/domain/model/EllipticCurve.js";
 import type { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
-import type { FieldMode, StepData } from "../hooks/useCurveState.js";
+import type { FieldMode, StepData, ModularLine } from "../hooks/useCurveState.js";
 
 interface Viewport {
   xMin: number; xMax: number;
@@ -195,6 +195,92 @@ function drawConstructionLines(
   }
 }
 
+// ===== Modular line (finite field) =====
+
+function drawModularLine(
+  ctx: CanvasRenderingContext2D,
+  ml: ModularLine,
+  curvePoints: Set<string>,
+  vp: Viewport,
+  w: number,
+  h: number,
+) {
+  const { slope, intercept, p } = ml;
+  const mod = (n: number) => ((n % p) + p) % p;
+
+  // Draw all p points on the line
+  for (let x = 0; x < p; x++) {
+    const y = mod(slope * x + intercept);
+    const [px, py] = toCanvas(x, y, vp, w, h);
+    const isOnCurve = curvePoints.has(`${x},${y}`);
+
+    if (isOnCurve) {
+      // Intersection with curve: bright ring
+      ctx.beginPath();
+      ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(255, 123, 107, 0.6)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    } else {
+      // Regular line point: small coral dot
+      ctx.beginPath();
+      ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(255, 123, 107, 0.35)";
+      ctx.fill();
+    }
+  }
+
+  // Connect consecutive line points with faint segments to show the pattern
+  ctx.strokeStyle = "rgba(255, 123, 107, 0.12)";
+  ctx.lineWidth = 1;
+  ctx.setLineDash([2, 3]);
+  const linePoints: [number, number][] = [];
+  for (let x = 0; x < p; x++) {
+    const y = mod(slope * x + intercept);
+    linePoints.push(toCanvas(x, y, vp, w, h));
+  }
+  // Sort by x pixel position and draw segments
+  linePoints.sort((a, b) => a[0] - b[0]);
+  ctx.beginPath();
+  ctx.moveTo(linePoints[0][0], linePoints[0][1]);
+  for (let i = 1; i < linePoints.length; i++) {
+    ctx.lineTo(linePoints[i][0], linePoints[i][1]);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// ===== Vertical line (finite field) =====
+
+function drawVerticalFiniteField(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  p: number,
+  vp: Viewport,
+  w: number,
+  h: number,
+) {
+  // Draw all p points on the vertical line x = constant
+  for (let y = 0; y < p; y++) {
+    const [px, py] = toCanvas(x, y, vp, w, h);
+    ctx.beginPath();
+    ctx.arc(px, py, 2, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(167, 139, 250, 0.3)";
+    ctx.fill();
+  }
+  // Vertical dashed connector
+  const [px, pyTop] = toCanvas(x, 0, vp, w, h);
+  const [, pyBot] = toCanvas(x, p - 1, vp, w, h);
+  ctx.setLineDash([3, 4]);
+  ctx.strokeStyle = "rgba(167, 139, 250, 0.25)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(px, Math.min(pyTop, pyBot));
+  ctx.lineTo(px, Math.max(pyTop, pyBot));
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
 // ===== Orbit trail =====
 
 function drawTrail(ctx: CanvasRenderingContext2D, trail: CurvePoint[], vp: Viewport, w: number, h: number) {
@@ -332,6 +418,18 @@ export function CurveCanvas({
       drawTrail(ctx, currentStep.trail, vp, w, h);
     }
 
+    // Modular line (finite field — p discrete dots forming the "line")
+    if (currentStep?.modularLine && mode === "finite" && isPrimeValid) {
+      const curvePointSet = new Set(finiteCurve.computeAllPoints().map((pt) => `${pt.x},${pt.y}`));
+      drawModularLine(ctx, currentStep.modularLine, curvePointSet, vp, w, h);
+    }
+
+    // Vertical line in finite field (for inverse / reflection)
+    if (currentStep?.verticalX !== undefined && mode === "finite") {
+      drawVerticalFiniteField(ctx, currentStep.verticalX, p, vp, w, h);
+    }
+
+    // Construction lines (real mode — geometric, extended)
     if (currentStep) {
       drawConstructionLines(ctx, currentStep, vp, w, h);
     }

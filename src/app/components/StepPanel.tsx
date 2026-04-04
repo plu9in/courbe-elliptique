@@ -32,12 +32,13 @@ function KaTeX({ formula }: { formula: string }) {
 function Legend({ step }: { step: StepData }) {
   const hasSecant = step.lines?.some((l) => l.style === "secant");
   const hasTangent = step.lines?.some((l) => l.style === "tangent");
-  const hasVertical = step.lines?.some((l) => l.style === "vertical");
+  const hasVertical = step.lines?.some((l) => l.style === "vertical") || step.verticalX !== undefined;
+  const hasModLine = !!step.modularLine;
   const hasRPrime = step.points?.some((p) => p.label.includes("R'"));
   const hasResult = step.points?.some((p) => p.label.includes("R") && !p.label.includes("R'"));
   const hasTrail = step.trail && step.trail.length > 0;
 
-  if (!hasSecant && !hasTangent && !hasVertical && !hasRPrime && !hasResult && !hasTrail) return null;
+  if (!hasSecant && !hasTangent && !hasVertical && !hasModLine && !hasRPrime && !hasResult && !hasTrail) return null;
 
   return (
     <div style={{
@@ -56,6 +57,14 @@ function Legend({ step }: { step: StepData }) {
         <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#FFD166" }}>
           <span style={{ width: "16px", height: "0", borderTop: "2px dashed #FFD166", display: "inline-block" }} />
           tangent
+        </span>
+      )}
+      {hasModLine && (
+        <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#FF7B6B" }}>
+          <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#FF7B6B", display: "inline-block" }} />
+          <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#FF7B6B", display: "inline-block", opacity: 0.5 }} />
+          <span style={{ width: "4px", height: "4px", borderRadius: "50%", background: "#FF7B6B", display: "inline-block", opacity: 0.3 }} />
+          mod line
         </span>
       )}
       {hasVertical && (

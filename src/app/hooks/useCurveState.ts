@@ -31,12 +31,24 @@ export interface LabeledPoint {
   label: string;
 }
 
+export interface ModularLine {
+  slope: number;
+  intercept: number;
+  p: number;
+  /** Intersection points with the curve (P, Q, R') */
+  intersections?: LabeledPoint[];
+}
+
 export interface StepData {
   label: string;
   explanation: string;
   formula?: string;
-  /** Lines to draw at this step (accumulated from step 0 to current) */
+  /** Lines to draw at this step (real mode: geometric, extended) */
   lines?: ConstructionLine[];
+  /** Modular line visualization (finite field mode: p discrete dots) */
+  modularLine?: ModularLine;
+  /** Vertical x-coordinate for vertical line in finite field */
+  verticalX?: number;
   /** Extra labeled points to show at this step */
   points?: LabeledPoint[];
   /** Trail of points for orbit visualization */
@@ -121,26 +133,38 @@ export function useCurveState() {
     if (state.mode === "finite") {
       const result = finiteCurve.addPoints(p, q);
       const mod = (n: number) => ((n % state.p) + state.p) % state.p;
-      const dx = mod(q.x - p.x);
-      const dy = mod(q.y - p.y);
-      const secant: ConstructionLine = { from: p, to: q, style: "secant" };
+      const s = mod((q.y - p.y) * finiteCurve.modInverse(q.x - p.x));
+      const c = mod(p.y - s * p.x);
+      // R' is the third intersection before reflection: R' = (result.x, p - result.y)
+      const rPrime = result ? { x: result.x, y: mod(-result.y) } : null;
+      const intersections: LabeledPoint[] = [
+        { point: p, color: "#FFD166", label: "P" },
+        { point: q, color: "#FF7B6B", label: "Q" },
+      ];
+      if (rPrime) intersections.push({ point: rPrime, color: "#A78BFA", label: "R'" });
+      const mLine: ModularLine = { slope: s, intercept: c, p: state.p, intersections };
       const steps: StepData[] = [
         {
-          label: "Draw secant line",
-          explanation: `Line through P(${p.x}, ${p.y}) and Q(${q.x}, ${q.y})`,
-          lines: [secant],
+          label: "Modular secant line",
+          explanation: `y \u2261 ${s}x + ${c} (mod ${state.p}) — ${state.p} discrete points`,
+          formula: `s = (y_Q - y_P) \\cdot (x_Q - x_P)^{-1} \\equiv ${s} \\pmod{${state.p}}`,
+          modularLine: mLine,
         },
         {
-          label: "Compute slope",
-          explanation: `s = (${q.y} - ${p.y}) \u00b7 (${q.x} - ${p.x})\u207b\u00b9 mod ${state.p}`,
-          formula: `s \\equiv ${dy} \\cdot ${dx}^{-1} \\pmod{${state.p}}`,
-          lines: [secant],
+          label: "Third intersection R'",
+          explanation: rPrime ? `R' = (${rPrime.x}, ${rPrime.y}) — before reflection` : "R' = O",
+          modularLine: mLine,
+          points: rPrime ? [{ point: rPrime, color: "#A78BFA", label: "R'" }] : [],
         },
         {
-          label: "Result",
-          explanation: result ? `R = (${result.x}, ${result.y})` : "R = O (point at infinity)",
-          lines: [secant],
-          points: result ? [{ point: result, color: "#06D6A0", label: "R" }] : [],
+          label: "Reflect: R = (x_R', −y_R' mod p)",
+          explanation: result ? `R = P + Q = (${result.x}, ${result.y})` : "R = O (point at infinity)",
+          modularLine: mLine,
+          verticalX: result ? result.x : undefined,
+          points: [
+            ...(rPrime ? [{ point: rPrime, color: "#A78BFA", label: "R'" }] : []),
+            ...(result ? [{ point: result, color: "#06D6A0", label: "R = P+Q" }] : []),
+          ],
         },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
@@ -185,19 +209,41 @@ export function useCurveState() {
 
     if (state.mode === "finite") {
       const result = finiteCurve.doublePoint(pt);
-      const tangent: ConstructionLine = { from: pt, to: result, style: "tangent" };
+      if (!result) {
+        dispatch({ type: "SET_RESULT", result: null, steps: [{ label: "2P = O", explanation: `P has y=0, tangent is vertical. 2P = O (identity).` }] });
+        return;
+      }
+      const mod = (n: number) => ((n % state.p) + state.p) % state.p;
+      const s = mod((3 * pt.x * pt.x + state.a) * finiteCurve.modInverse(2 * pt.y));
+      const c = mod(pt.y - s * pt.x);
+      const rPrime: CurvePoint = { x: result.x, y: mod(-result.y) };
+      const intersections: LabeledPoint[] = [
+        { point: pt, color: "#FFD166", label: "P (×2)" },
+        { point: rPrime, color: "#A78BFA", label: "R'" },
+      ];
+      const mLine: ModularLine = { slope: s, intercept: c, p: state.p, intersections };
       const steps: StepData[] = [
         {
-          label: "Tangent at P",
-          explanation: `Compute tangent slope at P(${pt.x}, ${pt.y})`,
-          formula: `s \\equiv (3x^2 + a) \\cdot (2y)^{-1} \\pmod{${state.p}}`,
-          lines: [tangent],
+          label: "Modular tangent at P",
+          explanation: `y \u2261 ${s}x + ${c} (mod ${state.p}) — tangent at P(${pt.x}, ${pt.y})`,
+          formula: `s \\equiv (3x_P^2 + a) \\cdot (2y_P)^{-1} \\equiv ${s} \\pmod{${state.p}}`,
+          modularLine: mLine,
         },
         {
-          label: "Result",
+          label: "Second intersection R'",
+          explanation: `R' = (${rPrime.x}, ${rPrime.y}) — before reflection`,
+          modularLine: mLine,
+          points: [{ point: rPrime, color: "#A78BFA", label: "R'" }],
+        },
+        {
+          label: "Reflect: 2P = (x_R', −y_R' mod p)",
           explanation: `2P = (${result.x}, ${result.y})`,
-          lines: [tangent],
-          points: [{ point: result, color: "#06D6A0", label: "2P" }],
+          modularLine: mLine,
+          verticalX: result.x,
+          points: [
+            { point: rPrime, color: "#A78BFA", label: "R'" },
+            { point: result, color: "#06D6A0", label: "2P" },
+          ],
         },
       ];
       dispatch({ type: "SET_RESULT", result, steps });
@@ -241,13 +287,12 @@ export function useCurveState() {
 
     if (state.mode === "finite") {
       const inv = finiteCurve.inversePoint(pt);
-      const vertical: ConstructionLine = { from: pt, to: inv, style: "vertical" };
       const steps: StepData[] = [
         {
-          label: "Reflect over x-axis",
+          label: "Vertical line at x = " + pt.x,
           explanation: `-P = (${pt.x}, ${state.p} - ${pt.y}) = (${inv.x}, ${inv.y})`,
           formula: `-P = (x,\\, p - y) = (${pt.x},\\, ${state.p} - ${pt.y})`,
-          lines: [vertical],
+          verticalX: pt.x,
           points: [{ point: inv, color: "#06D6A0", label: "-P" }],
         },
       ];
