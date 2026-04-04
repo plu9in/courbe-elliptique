@@ -401,6 +401,29 @@ describe("FiniteFieldCurve", () => {
     }
   });
 
+  it("simulates ECDH: Alice and Bob derive the same shared secret", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+
+    // Alice picks private key a=7, computes public key A=7G
+    const alicePrivate = 7;
+    const alicePublic = curve.scalarMultiply(g, alicePrivate)!;
+
+    // Bob picks private key b=11, computes public key B=11G
+    const bobPrivate = 11;
+    const bobPublic = curve.scalarMultiply(g, bobPrivate)!;
+
+    // Alice computes shared secret: a*B = 7*11G
+    const aliceShared = curve.scalarMultiply(bobPublic, alicePrivate);
+
+    // Bob computes shared secret: b*A = 11*7G
+    const bobShared = curve.scalarMultiply(alicePublic, bobPrivate);
+
+    // Both arrive at the same point
+    expect(aliceShared).toEqual(bobShared);
+    expect(aliceShared).not.toBeNull();
+  });
+
   it("verifies closure: P + Q is on the curve", () => {
     const curve = new FiniteFieldCurve(1, 1, 23);
     const allPoints = curve.computeAllPoints();
