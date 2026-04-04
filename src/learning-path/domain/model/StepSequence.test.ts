@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { StepSequence } from "./StepSequence.js";
+import type { AnimationStep } from "./AnimationStep.js";
 
 describe("StepSequence", () => {
   it("can be created from a list of step labels", () => {
@@ -54,5 +55,27 @@ describe("StepSequence", () => {
 
     expect(atStart.currentStep).toBe(1);
     expect(atStart.currentLabel).toBe("A");
+  });
+
+  it("exposes the current step's explanation and formula when created from AnimationSteps", () => {
+    const steps: AnimationStep[] = [
+      { label: "Draw line", explanation: "Draw a straight line through P and Q" },
+      {
+        label: "Compute slope",
+        explanation: "The slope of the secant line",
+        formula: "s = (y₂ - y₁) / (x₂ - x₁)",
+        values: { y1: 2, y2: 4, x1: 1, x2: 3 },
+      },
+      { label: "Reflect", explanation: "Reflect the intersection over the x-axis" },
+    ];
+
+    const seq = StepSequence.fromSteps(steps);
+    expect(seq.currentExplanation).toBe("Draw a straight line through P and Q");
+    expect(seq.currentFormula).toBeUndefined();
+
+    const step2 = seq.next();
+    expect(step2.currentExplanation).toBe("The slope of the secant line");
+    expect(step2.currentFormula).toBe("s = (y₂ - y₁) / (x₂ - x₁)");
+    expect(step2.currentValues).toEqual({ y1: 2, y2: 4, x1: 1, x2: 3 });
   });
 });
