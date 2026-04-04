@@ -270,4 +270,67 @@ describe("FiniteFieldCurve", () => {
     expect(FiniteFieldCurve.isPrime(0)).toBe(false);
     expect(FiniteFieldCurve.isPrime(4)).toBe(false);
   });
+
+  it("computes the orbit of a point as all multiples until identity", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    const orbit = curve.computeOrbit(p);
+
+    // Orbit should start with P and contain all kP for k=1..n-1
+    expect(orbit[0]).toEqual(p);
+    expect(orbit.length).toBeGreaterThan(1);
+
+    // Each point in orbit is on the curve
+    for (const pt of orbit) {
+      expect(curve.isPointOnCurve(pt.x, pt.y)).toBe(true);
+    }
+
+    // The next multiply after orbit should be identity
+    const nP = curve.scalarMultiply(p, orbit.length + 1);
+    expect(nP).toBeNull();
+  });
+
+  it("computes the order of a point", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    const order = curve.pointOrder(p);
+
+    expect(order).toBeGreaterThan(1);
+    expect(curve.scalarMultiply(p, order)).toBeNull();
+    // n-1 should NOT be identity
+    expect(curve.scalarMultiply(p, order - 1)).not.toBeNull();
+  });
+
+  it("computes the group order including the point at infinity", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // 27 affine points + 1 point at infinity = 28
+    expect(curve.groupOrder()).toBe(28);
+  });
+
+  it("identifies a generator whose order equals the group order", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const allPoints = curve.computeAllPoints();
+
+    // Find a generator (point whose order = group order = 28)
+    const generator = allPoints.find((pt) => curve.pointOrder(pt) === 28);
+
+    if (generator) {
+      expect(curve.isGenerator(generator)).toBe(true);
+    }
+  });
+
+  it("identifies a non-generator correctly", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const allPoints = curve.computeAllPoints();
+
+    // Find a non-generator (order < group order)
+    const nonGen = allPoints.find((pt) => curve.pointOrder(pt) < 28);
+
+    if (nonGen) {
+      expect(curve.isGenerator(nonGen)).toBe(false);
+    }
+  });
 });

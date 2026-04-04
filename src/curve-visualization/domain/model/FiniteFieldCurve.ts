@@ -81,6 +81,29 @@ export class FiniteFieldCurve {
     return (y * y) % this.p === this.evaluateAt(x);
   }
 
+  computeOrbit(pt: CurvePoint): CurvePoint[] {
+    const orbit: CurvePoint[] = [pt];
+    let current: CurvePoint | null = pt;
+    for (let i = 2; i <= this.p * this.p; i++) {
+      current = this.addPoints(current, pt);
+      if (current === null) break;
+      orbit.push(current);
+    }
+    return orbit;
+  }
+
+  pointOrder(pt: CurvePoint): number {
+    return this.computeOrbit(pt).length + 1;
+  }
+
+  groupOrder(): number {
+    return this.computeAllPoints().length + 1;
+  }
+
+  isGenerator(pt: CurvePoint): boolean {
+    return this.pointOrder(pt) === this.groupOrder();
+  }
+
   computeAllPoints(): CurvePoint[] {
     const points: CurvePoint[] = [];
     for (let x = 0; x < this.p; x++) {
