@@ -58,6 +58,84 @@ This is why real curves (secp256k1, P-256...) are chosen so that their group ord
 
 In the app: select a point, click **Orbit of P** — if the displayed order is prime and equals the group order, it's a valid cryptographic base point.
 
+### How to encrypt a message with elliptic curves
+
+Elliptic curves **don't encrypt messages directly**. They solve a harder problem: how can two people who have never met agree on a shared secret, even if an eavesdropper watches their entire conversation?
+
+The answer is a three-step process:
+
+#### Step 1 — Key exchange (ECDH, what this app demonstrates)
+
+Alice and Bob agree on a public curve and a generator point G. Then:
+
+```
+Alice picks a secret number  a = 7     (private key — never shared)
+Alice computes               A = 7G    (public key — sent to Bob)
+
+Bob picks a secret number    b = 11    (private key — never shared)
+Bob computes                 B = 11G   (public key — sent to Alice)
+
+Alice computes               S = 7·B  = 7·11·G = 77G
+Bob computes                 S = 11·A = 11·7·G = 77G
+                                        ↑ same point!
+```
+
+Both arrive at the same point S, but an eavesdropper who saw A = 7G and B = 11G cannot find S without solving the DLP (finding 7 from G and 7G), which is computationally infeasible for large primes.
+
+**You can see this happen in the app**: select a point G, click **ECDH Demo**.
+
+#### Step 2 — Derive a symmetric key (KDF)
+
+The shared point S = (x, y) is not directly usable as an encryption key. It's passed through a **Key Derivation Function** (KDF) like HKDF-SHA256:
+
+```
+symmetric_key = HKDF-SHA256(S.x)    →    256-bit AES key
+```
+
+This step converts the large curve point into a fixed-size byte sequence suitable for a symmetric cipher.
+
+#### Step 3 — Encrypt with a symmetric cipher (AES-GCM, ChaCha20...)
+
+The actual message is encrypted using a fast symmetric algorithm with the derived key:
+
+```
+ciphertext = AES-256-GCM(key = symmetric_key, plaintext = "Hello Bob!")
+```
+
+Only someone with the same symmetric key (i.e. Alice or Bob) can decrypt.
+
+#### The complete picture
+
+```
+┌─────────┐                              ┌─────────┐
+│  Alice   │                              │   Bob   │
+│          │     A = aG (public key)      │         │
+│  a = 7   │ ──────────────────────────►  │  b = 11 │
+│          │     B = bG (public key)      │         │
+│          │ ◄──────────────────────────  │         │
+│          │                              │         │
+│ S = a·B  │    (same shared secret S)    │ S = b·A │
+│ key=KDF(S)                              │ key=KDF(S)
+│          │                              │         │
+│ encrypt  │ ───── ciphertext ──────────► │ decrypt │
+│ with AES │                              │ with AES│
+└─────────┘                              └─────────┘
+     ▲                                        ▲
+     │          Eavesdropper sees:             │
+     │          A = 7G, B = 11G               │
+     │          but CANNOT compute S           │
+     │          (would need to solve DLP)      │
+     └────────────────────────────────────────┘
+```
+
+**In summary**: elliptic curves handle the key exchange (the hard part). A classical symmetric cipher handles the encryption (the fast part). This hybrid approach is used by TLS (HTTPS), Signal, WireGuard, SSH, and virtually every modern encrypted protocol.
+
+#### What about ECDSA? (signing, not encrypting)
+
+ECDSA is **not encryption** — it's a **digital signature**. It proves that a message was written by the owner of a private key, without revealing that key. It guarantees **authenticity and integrity**, not **confidentiality**.
+
+The app demonstrates ECDSA in 7 steps: key pair → hash → nonce → signature (r, s) → verification.
+
 ### The Discrete Logarithm Problem (DLP)
 
 The **DLP: find n** button demonstrates the core security assumption:
