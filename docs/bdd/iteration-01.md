@@ -150,4 +150,4 @@ Feature: Display Elliptic Curve over Real Numbers
 - [x] Mutation testing: 100% mutants killed (17/17)
 - [x] Code reviewed for SOLID compliance
 - [x] Domain purity verified (no infrastructure in domain layer)
-- [ ] Committed with conventional message
+- [x] Committed with conventional message (5f7741b)
