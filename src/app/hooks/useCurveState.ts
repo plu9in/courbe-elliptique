@@ -53,6 +53,7 @@ type Action =
   | { type: "SET_RESULT"; result: CurvePoint | null; steps: StepData[] }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
+  | { type: "SKIP_TO_END" }
   | { type: "SET_SCALAR"; n: number }
   | { type: "LOAD_PRESET"; a: number; b: number; p: number; presetId: string };
 
@@ -80,6 +81,8 @@ function reducer(state: CurveState, action: Action): CurveState {
       return { ...state, currentStepIndex: Math.min(state.currentStepIndex + 1, state.steps.length - 1) };
     case "PREV_STEP":
       return { ...state, currentStepIndex: Math.max(state.currentStepIndex - 1, 0) };
+    case "SKIP_TO_END":
+      return { ...state, currentStepIndex: Math.max(state.steps.length - 1, 0) };
     case "SET_SCALAR":
       return { ...state, scalarN: action.n };
     default:
@@ -344,6 +347,46 @@ export function useCurveState() {
     dispatch({ type: "SET_RESULT", result: sharedA, steps });
   }, [state.selectedP, state.mode, finiteCurve]);
 
+  const computeECDSA = useCallback(() => {
+    if (!state.selectedP || state.mode !== "finite") return;
+    const g = state.selectedP;
+    const d = 7;
+    const k = 3;
+    const message = "Hello";
+    const pubQ = finiteCurve.scalarMultiply(g, d)!;
+    const sig = finiteCurve.ecdsaSign(g, d, message, k);
+    if (!sig) return;
+    const verif = finiteCurve.ecdsaVerify(g, pubQ, message, { r: sig.r, s: sig.s });
+    const n = finiteCurve.pointOrder(g);
+
+    const steps: StepData[] = [
+      { label: "Key pair", explanation: `Private key d = ${d}, Public key Q = dG = (${pubQ.x}, ${pubQ.y})`, points: [{ point: pubQ, color: "#FFD166", label: "Q=dG" }], formula: `Q = d \\cdot G = ${d} \\cdot G` },
+      { label: "Hash message", explanation: `e = H("${message}") mod ${n} = ${sig.e}`, formula: `e = H(\\text{"${message}"}) \\bmod ${n} = ${sig.e}` },
+      { label: "Nonce k = " + k, explanation: `kG = ${k}G = (${sig.kG.x}, ${sig.kG.y})`, points: [{ point: sig.kG, color: "#A78BFA", label: "kG" }], formula: `R = kG = ${k} \\cdot G` },
+      { label: "Signature (r, s)", explanation: `r = R.x mod n = ${sig.r}, s = k\u207b\u00b9(e + r\u00b7d) mod n = ${sig.s}`, formula: `(r, s) = (${sig.r},\\, ${sig.s})` },
+      { label: "Verify: compute w", explanation: `w = s\u207b\u00b9 mod ${n} = ${verif.w}`, formula: `w = s^{-1} \\bmod n = ${verif.w}` },
+      { label: "Verify: u\u2081, u\u2082", explanation: `u\u2081 = e\u00b7w = ${verif.u1}, u\u2082 = r\u00b7w = ${verif.u2}`, formula: `u_1 = ${verif.u1},\\quad u_2 = ${verif.u2}` },
+      { label: verif.valid ? "Verified!" : "FAILED", explanation: verif.v ? `V = u\u2081G + u\u2082Q = (${verif.v.x}, ${verif.v.y}). V.x mod n = ${verif.v.x % n} ${verif.valid ? "= r" : "\u2260 r"}` : "V = O", points: verif.v ? [{ point: verif.v, color: verif.valid ? "#06D6A0" : "#FF7B6B", label: "V" }] : [], formula: verif.valid ? `V.x \\bmod n = ${sig.r} = r \\quad \\checkmark` : `V.x \\bmod n \\neq r` },
+    ];
+    dispatch({ type: "SET_RESULT", result: verif.v, steps });
+  }, [state.selectedP, state.mode, finiteCurve]);
+
+  const computeDoubleAndAdd = useCallback(() => {
+    if (!state.selectedP || state.mode !== "finite") return;
+    const { result, steps: daSteps } = finiteCurve.doubleAndAdd(state.selectedP, state.scalarN);
+    const binary = state.scalarN.toString(2);
+    const steps: StepData[] = [
+      { label: `Binary: ${binary}`, explanation: `${state.scalarN} = ${binary}\u2082 (${binary.length} bits)` },
+      ...daSteps.map((s, i) => ({
+        label: `Step ${i + 1}: ${s.op}`,
+        explanation: s.value ? `${s.op === "double" ? "Double" : "Add P"} \u2192 (${s.value.x}, ${s.value.y})` : `\u2192 O`,
+        points: s.value ? [{ point: s.value, color: s.op === "double" ? "#A78BFA" : "#06D6A0", label: s.op === "double" ? "2\u00d7" : "+P" }] : [],
+        formula: `\\text{bit } ${s.bit} \\rightarrow \\text{${s.op}}`,
+      })),
+    ];
+    dispatch({ type: "SET_RESULT", result, steps });
+  }, [state.selectedP, state.scalarN, state.mode, finiteCurve]);
+
   return {
     state,
     dispatch,
@@ -358,5 +401,7 @@ export function useCurveState() {
     computeOrbit,
     computeDLP,
     computeECDH,
+    computeECDSA,
+    computeDoubleAndAdd,
   };
 }

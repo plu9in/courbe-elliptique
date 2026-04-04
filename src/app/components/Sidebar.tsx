@@ -26,6 +26,8 @@ interface Props {
   onOrbit: () => void;
   onDLP: () => void;
   onECDH: () => void;
+  onECDSA: () => void;
+  onDoubleAndAdd: () => void;
   onSelectPreset: (preset: CryptoPreset) => void;
   onSetScalar: (n: number) => void;
 }
@@ -40,7 +42,7 @@ export function Sidebar({
   mode, a, b, p, isSingular, isPrimeValid,
   selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
-  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onSetScalar, onSelectPreset,
+  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onSetScalar, onSelectPreset,
 }: Props) {
   const equationStr = mode === "real"
     ? `y\u00B2 = x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b}`
@@ -217,6 +219,22 @@ export function Sidebar({
               style={{ gridColumn: "1 / -1" }}
             >
               ECDH Demo (a=7, b=11)
+            </button>
+            <button
+              className="op-btn primary"
+              disabled={!selectedP}
+              onClick={onECDSA}
+              style={{ gridColumn: "1 / -1" }}
+            >
+              ECDSA Sign &amp; Verify
+            </button>
+            <button
+              className="op-btn"
+              disabled={!selectedP}
+              onClick={onDoubleAndAdd}
+              style={{ gridColumn: "1 / -1" }}
+            >
+              Double-and-Add ({scalarN}P)
             </button>
           </div>
         </div>

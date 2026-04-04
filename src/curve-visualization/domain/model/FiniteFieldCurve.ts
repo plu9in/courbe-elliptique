@@ -48,7 +48,8 @@ export class FiniteFieldCurve {
     throw new Error(`No modular inverse for ${a} mod ${m}`);
   }
 
-  doublePoint(pt: CurvePoint): CurvePoint {
+  doublePoint(pt: CurvePoint): CurvePoint | null {
+    if (pt.y === 0) return null; // tangent is vertical → result is O
     const mod = (n: number) => ((n % this.p) + this.p) % this.p;
     const s = mod((3 * pt.x * pt.x + this.a) * this.modInverse(2 * pt.y));
     const x3 = mod(s * s - 2 * pt.x);
@@ -74,6 +75,7 @@ export class FiniteFieldCurve {
   }
 
   scalarMultiply(pt: CurvePoint, n: number): CurvePoint | null {
+    if (n === 0) return null;
     if (n === 1) return pt;
     let result: CurvePoint | null = pt;
     for (let i = 1; i < n; i++) {
@@ -116,6 +118,81 @@ export class FiniteFieldCurve {
       current = this.addPoints(current, base);
     }
     return null;
+  }
+
+  /** Simple hash: sum of char codes mod n */
+  static simpleHash(message: string, n: number): number {
+    let h = 0;
+    for (let i = 0; i < message.length; i++) {
+      h = (h * 31 + message.charCodeAt(i)) % n;
+    }
+    return h === 0 ? 1 : h;
+  }
+
+  ecdsaSign(
+    g: CurvePoint,
+    privateKey: number,
+    message: string,
+    nonce: number,
+  ): { r: number; s: number; e: number; kG: CurvePoint } | null {
+    const n = this.pointOrder(g);
+    const e = FiniteFieldCurve.simpleHash(message, n);
+    const kG = this.scalarMultiply(g, nonce);
+    if (!kG) return null;
+    const r = kG.x % n;
+    if (r === 0) return null;
+    const kInv = this.modInverseOf(nonce, n);
+    const s = (kInv * ((e + r * privateKey) % n)) % n;
+    if (s === 0) return null;
+    return { r, s, e, kG };
+  }
+
+  ecdsaVerify(
+    g: CurvePoint,
+    publicKey: CurvePoint,
+    message: string,
+    sig: { r: number; s: number },
+  ): { valid: boolean; u1: number; u2: number; v: CurvePoint | null; e: number; w: number } {
+    const n = this.pointOrder(g);
+    const e = FiniteFieldCurve.simpleHash(message, n);
+    const w = this.modInverseOf(sig.s, n);
+    const u1 = (e * w) % n;
+    const u2 = (sig.r * w) % n;
+    const u1G = this.scalarMultiply(g, u1);
+    const u2Q = this.scalarMultiply(publicKey, u2);
+    let v: CurvePoint | null = null;
+    if (u1G && u2Q) v = this.addPoints(u1G, u2Q);
+    else if (u1G) v = u1G;
+    else if (u2Q) v = u2Q;
+    const valid = v !== null && v.x % n === sig.r;
+    return { valid, u1, u2, v, e, w };
+  }
+
+  /** Double-and-add scalar multiplication with step trace */
+  doubleAndAdd(pt: CurvePoint, n: number): { result: CurvePoint | null; steps: { bit: number; op: string; value: CurvePoint | null }[] } {
+    const bits = n.toString(2);
+    let acc: CurvePoint | null = null;
+    const steps: { bit: number; op: string; value: CurvePoint | null }[] = [];
+    for (let i = 0; i < bits.length; i++) {
+      if (acc !== null) {
+        acc = this.doublePoint(acc);
+        steps.push({ bit: Number(bits[i]), op: "double", value: acc });
+      }
+      if (bits[i] === "1") {
+        acc = acc ? this.addPoints(acc, pt) : pt;
+        steps.push({ bit: 1, op: "add", value: acc });
+      }
+    }
+    return { result: acc, steps };
+  }
+
+  /** Modular inverse of a mod m (for arbitrary modulus, not just this.p) */
+  private modInverseOf(a: number, m: number): number {
+    const normalized = ((a % m) + m) % m;
+    for (let i = 1; i < m; i++) {
+      if ((normalized * i) % m === 1) return i;
+    }
+    throw new Error(`No modular inverse for ${a} mod ${m}`);
   }
 
   computeAllPoints(): CurvePoint[] {

@@ -7,6 +7,7 @@ interface Props {
   currentStepIndex: number;
   onNext: () => void;
   onPrev: () => void;
+  onSkipToEnd: () => void;
 }
 
 function KaTeX({ formula }: { formula: string }) {
@@ -85,7 +86,7 @@ function Legend({ step }: { step: StepData }) {
   );
 }
 
-export function StepPanel({ steps, currentStepIndex, onNext, onPrev }: Props) {
+export function StepPanel({ steps, currentStepIndex, onNext, onPrev, onSkipToEnd }: Props) {
   if (steps.length === 0) {
     return (
       <div className="step-panel">
@@ -111,6 +112,9 @@ export function StepPanel({ steps, currentStepIndex, onNext, onPrev }: Props) {
         </span>
         <button onClick={onNext} disabled={isLast} aria-label="Next step">
           &#x25B6;
+        </button>
+        <button onClick={onSkipToEnd} disabled={isLast} aria-label="Skip to end" style={{ fontSize: "14px" }}>
+          &#x25B6;&#x25B6;
         </button>
       </div>
       <div className="step-content">

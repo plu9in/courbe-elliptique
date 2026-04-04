@@ -2,7 +2,6 @@ import { useCurveState } from "./hooks/useCurveState.js";
 import { CurveCanvas } from "./components/CurveCanvas.js";
 import { Sidebar } from "./components/Sidebar.js";
 import { StepPanel } from "./components/StepPanel.js";
-import { FiniteFieldCurve } from "../curve-visualization/domain/model/FiniteFieldCurve.js";
 
 export function App() {
   const {
@@ -19,6 +18,8 @@ export function App() {
     computeOrbit,
     computeDLP,
     computeECDH,
+    computeECDSA,
+    computeDoubleAndAdd,
   } = useCurveState();
 
   const pointCount = state.mode === "finite" && isPrimeValid
@@ -27,7 +28,6 @@ export function App() {
 
   return (
     <div className="app-layout">
-      {/* Top App Bar */}
       <header className="top-bar">
         <h1>Elliptic Curve <em>Group Explorer</em></h1>
         <div className="mode-toggle">
@@ -46,7 +46,6 @@ export function App() {
         </div>
       </header>
 
-      {/* Sidebar */}
       <Sidebar
         mode={state.mode}
         a={state.a}
@@ -70,6 +69,8 @@ export function App() {
         onOrbit={computeOrbit}
         onDLP={computeDLP}
         onECDH={computeECDH}
+        onECDSA={computeECDSA}
+        onDoubleAndAdd={computeDoubleAndAdd}
         onSetScalar={(n) => dispatch({ type: "SET_SCALAR", n })}
         onSelectPreset={(preset) => dispatch({
           type: "LOAD_PRESET",
@@ -80,7 +81,6 @@ export function App() {
         })}
       />
 
-      {/* Canvas */}
       <CurveCanvas
         mode={state.mode}
         realCurve={realCurve}
@@ -96,15 +96,14 @@ export function App() {
         onPointClick={(point) => dispatch({ type: "SELECT_POINT", point })}
       />
 
-      {/* Step Panel */}
       <StepPanel
         steps={state.steps}
         currentStepIndex={state.currentStepIndex}
         onNext={() => dispatch({ type: "NEXT_STEP" })}
         onPrev={() => dispatch({ type: "PREV_STEP" })}
+        onSkipToEnd={() => dispatch({ type: "SKIP_TO_END" })}
       />
 
-      {/* Point count overlay */}
       {state.mode === "finite" && isPrimeValid && pointCount !== null && (
         <div style={{
           position: "fixed",
