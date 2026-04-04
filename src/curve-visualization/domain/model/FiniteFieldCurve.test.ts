@@ -365,6 +365,42 @@ describe("FiniteFieldCurve", () => {
     expect(curve.addPoints(null, p1)).toEqual(p1);
   });
 
+  it("solves the discrete log problem by brute force", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const target = curve.scalarMultiply(g, 17)!;
+
+    const result = curve.discreteLog(g, target);
+
+    expect(result).toBe(17);
+  });
+
+  it("returns null when target is not in the subgroup", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const orderG = curve.pointOrder(g);
+
+    // If G generates the full group, every point is reachable
+    // Use a subgroup generator instead
+    const allPoints = curve.computeAllPoints();
+    const subGen = allPoints.find((pt) => {
+      const ord = curve.pointOrder(pt);
+      return ord > 2 && ord < curve.groupOrder();
+    });
+
+    if (subGen) {
+      // Find a point NOT in the subgroup of subGen
+      const subOrbit = curve.computeOrbit(subGen);
+      const outsider = allPoints.find(
+        (pt) => !subOrbit.some((o) => o.x === pt.x && o.y === pt.y)
+      );
+      if (outsider) {
+        const result = curve.discreteLog(subGen, outsider);
+        expect(result).toBeNull();
+      }
+    }
+  });
+
   it("verifies closure: P + Q is on the curve", () => {
     const curve = new FiniteFieldCurve(1, 1, 23);
     const allPoints = curve.computeAllPoints();

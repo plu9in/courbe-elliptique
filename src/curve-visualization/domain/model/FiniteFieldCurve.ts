@@ -104,6 +104,15 @@ export class FiniteFieldCurve {
     return this.pointOrder(pt) === this.groupOrder();
   }
 
+  discreteLog(base: CurvePoint, target: CurvePoint): number | null {
+    let current: CurvePoint | null = base;
+    for (let n = 1; current !== null; n++) {
+      if (current.x === target.x && current.y === target.y) return n;
+      current = this.addPoints(current, base);
+    }
+    return null;
+  }
+
   computeAllPoints(): CurvePoint[] {
     const points: CurvePoint[] = [];
     for (let x = 0; x < this.p; x++) {
