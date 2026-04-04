@@ -16,6 +16,9 @@ export function App() {
     doublePoint,
     computeInverse,
     computeScalar,
+    computeOrbit,
+    computeDLP,
+    computeECDH,
   } = useCurveState();
 
   const pointCount = state.mode === "finite" && isPrimeValid
@@ -64,6 +67,9 @@ export function App() {
         onDouble={doublePoint}
         onInverse={computeInverse}
         onScalar={computeScalar}
+        onOrbit={computeOrbit}
+        onDLP={computeDLP}
+        onECDH={computeECDH}
         onSetScalar={(n) => dispatch({ type: "SET_SCALAR", n })}
         onSelectPreset={(preset) => dispatch({
           type: "LOAD_PRESET",

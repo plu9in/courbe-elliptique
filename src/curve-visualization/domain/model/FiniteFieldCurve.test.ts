@@ -424,6 +424,18 @@ describe("FiniteFieldCurve", () => {
     expect(aliceShared).not.toBeNull();
   });
 
+  it("detects a singular curve over a finite field", () => {
+    // 4a³+27b² ≡ 0 mod p means singular
+    // a=-3, b=2, p=23: 4(-27)+27(4)=-108+108=0, 0 mod 23 = 0
+    const curve = new FiniteFieldCurve(-3, 2, 23);
+    expect(curve.isSingular()).toBe(true);
+  });
+
+  it("reports a non-singular finite field curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    expect(curve.isSingular()).toBe(false);
+  });
+
   it("verifies closure: P + Q is on the curve", () => {
     const curve = new FiniteFieldCurve(1, 1, 23);
     const allPoints = curve.computeAllPoints();

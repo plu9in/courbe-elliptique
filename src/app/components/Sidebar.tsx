@@ -23,6 +23,9 @@ interface Props {
   onDouble: () => void;
   onInverse: () => void;
   onScalar: () => void;
+  onOrbit: () => void;
+  onDLP: () => void;
+  onECDH: () => void;
   onSelectPreset: (preset: CryptoPreset) => void;
   onSetScalar: (n: number) => void;
 }
@@ -37,7 +40,7 @@ export function Sidebar({
   mode, a, b, p, isSingular, isPrimeValid,
   selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
-  onAdd, onDouble, onInverse, onScalar, onSetScalar, onSelectPreset,
+  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onSetScalar, onSelectPreset,
 }: Props) {
   const equationStr = mode === "real"
     ? `y\u00B2 = x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b}`
@@ -187,6 +190,37 @@ export function Sidebar({
           )}
         </div>
       </div>
+
+      {/* P3: Group Exploration & Crypto */}
+      {mode === "finite" && (
+        <div className="card">
+          <div className="card-title">Exploration & Crypto</div>
+          <div className="op-grid">
+            <button
+              className="op-btn"
+              disabled={!selectedP}
+              onClick={onOrbit}
+            >
+              Orbit of P
+            </button>
+            <button
+              className="op-btn"
+              disabled={!selectedP || !selectedQ}
+              onClick={onDLP}
+            >
+              DLP: find n
+            </button>
+            <button
+              className="op-btn primary"
+              disabled={!selectedP}
+              onClick={onECDH}
+              style={{ gridColumn: "1 / -1" }}
+            >
+              ECDH Demo (a=7, b=11)
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

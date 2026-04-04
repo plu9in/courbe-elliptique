@@ -11,6 +11,11 @@ export class FiniteFieldCurve {
     this.p = p;
   }
 
+  isSingular(): boolean {
+    const disc = (4 * this.a * this.a * this.a + 27 * this.b * this.b) % this.p;
+    return ((disc % this.p) + this.p) % this.p === 0;
+  }
+
   static isPrime(n: number): boolean {
     if (n < 2) return false;
     for (let i = 2; i * i <= n; i++) {
