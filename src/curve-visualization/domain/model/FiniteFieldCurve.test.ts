@@ -125,7 +125,90 @@ describe("FiniteFieldCurve", () => {
   it("modular inverse throws when no inverse exists", () => {
     const curve = new FiniteFieldCurve(1, 1, 23);
 
-    // 0 has no modular inverse
     expect(() => curve.modInverse(0)).toThrow("No modular inverse");
+  });
+
+  it("doubles a point using the tangent slope over a finite field", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // P=(0,1): s=(3·0+1)·(2·1)⁻¹ mod 23 = 1·12 = 12
+    // x3=(144-0) mod 23 = 6, y3=(12·(0-6)-1) mod 23 = (-73) mod 23 = 19
+    const result = curve.doublePoint({ x: 0, y: 1 });
+
+    expect(result.x).toBe(6);
+    expect(result.y).toBe(19);
+    expect(curve.isPointOnCurve(result.x, result.y)).toBe(true);
+  });
+
+  it("computes the inverse of a point as (x, p - y)", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    const inv = curve.inversePoint({ x: 3, y: 5 });
+
+    expect(inv).toEqual({ x: 3, y: 18 });
+  });
+
+  it("returns the same point when adding with identity (null)", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    expect(curve.addPoints(p, null)).toEqual(p);
+    expect(curve.addPoints(null, p)).toEqual(p);
+  });
+
+  it("returns identity (null) when adding a point to its inverse", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // (0,1) + (0,22) = O since 1+22 = 23 ≡ 0 mod 23
+    const result = curve.addPoints({ x: 0, y: 1 }, { x: 0, y: 22 });
+
+    expect(result).toBeNull();
+  });
+
+  it("delegates to doubling when adding a point to itself", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    const viaAdd = curve.addPoints(p, p);
+    const viaDouble = curve.doublePoint(p);
+
+    expect(viaAdd).toEqual(viaDouble);
+  });
+
+  it("doubles a different point to confirm the tangent formula", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // P=(1,7): s=(3+1)·(14)⁻¹ mod 23 = 4·(14⁻¹) mod 23
+    // 14⁻¹ mod 23: 14·5=70≡1 mod 23 → 14⁻¹=5
+    // s=4·5=20. x3=(400-2) mod 23 = 398 mod 23 = 398-17*23=398-391=7
+    // y3=(20·(1-7)-7) mod 23 = (20·(-6)-7) mod 23 = -127 mod 23 = -127+6*23= -127+138=11
+    const result = curve.doublePoint({ x: 1, y: 7 });
+
+    expect(result.x).toBe(7);
+    expect(result.y).toBe(11);
+    expect(curve.isPointOnCurve(result.x, result.y)).toBe(true);
+  });
+
+  it("correctly adds two points with the same y but different x", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // (11,3) and (17,3) share y=3 but have different x
+    // s = (3-3)·(17-11)⁻¹ mod 23 = 0. x3 = (0-11-17) mod 23 = 18. y3 = (0-3) mod 23 = 20
+    const result = curve.addPoints({ x: 11, y: 3 }, { x: 17, y: 3 });
+
+    expect(result).not.toBeNull();
+    expect(result!.x).toBe(18);
+    expect(result!.y).toBe(20);
+  });
+
+  it("does not return null when two different points share the same x but are not inverses", () => {
+    // On this curve, if x1===x2 and points are different, they MUST be inverses.
+    // So this tests that having different x values doesn't wrongly trigger null.
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    const result = curve.addPoints({ x: 1, y: 7 }, { x: 0, y: 1 });
+
+    expect(result).not.toBeNull();
+    expect(curve.isPointOnCurve(result!.x, result!.y)).toBe(true);
   });
 });

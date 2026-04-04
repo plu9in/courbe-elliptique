@@ -35,7 +35,24 @@ export class FiniteFieldCurve {
     throw new Error(`No modular inverse for ${a} mod ${m}`);
   }
 
-  addPoints(p1: CurvePoint, q: CurvePoint): CurvePoint {
+  doublePoint(pt: CurvePoint): CurvePoint {
+    const mod = (n: number) => ((n % this.p) + this.p) % this.p;
+    const s = mod((3 * pt.x * pt.x + this.a) * this.modInverse(2 * pt.y));
+    const x3 = mod(s * s - 2 * pt.x);
+    const y3 = mod(s * (pt.x - x3) - pt.y);
+    return { x: x3, y: y3 };
+  }
+
+  inversePoint(pt: CurvePoint): CurvePoint {
+    return { x: pt.x, y: (this.p - pt.y) % this.p };
+  }
+
+  addPoints(p1: CurvePoint | null, q: CurvePoint | null): CurvePoint | null {
+    if (p1 === null) return q;
+    if (q === null) return p1;
+    if (p1.x === q.x && (p1.y + q.y) % this.p === 0) return null;
+    if (p1.x === q.x && p1.y === q.y) return this.doublePoint(p1);
+
     const mod = (n: number) => ((n % this.p) + this.p) % this.p;
     const s = mod((q.y - p1.y) * this.modInverse(q.x - p1.x));
     const x3 = mod(s * s - p1.x - q.x);

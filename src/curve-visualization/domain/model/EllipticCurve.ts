@@ -29,6 +29,17 @@ export class EllipticCurve {
     return { x, y: closest };
   }
 
+  doublePoint(p: CurvePoint): CurvePoint {
+    const s = (3 * p.x * p.x + this.a) / (2 * p.y);
+    const x3 = s * s - 2 * p.x;
+    const y3 = s * (p.x - x3) - p.y;
+    return { x: x3, y: y3 };
+  }
+
+  inversePoint(p: CurvePoint): CurvePoint {
+    return { x: p.x, y: -p.y };
+  }
+
   addPoints(p: CurvePoint, q: CurvePoint): CurvePoint {
     const s = (q.y - p.y) / (q.x - p.x);
     const x3 = s * s - p.x - q.x;

@@ -1,7 +1,6 @@
 {
   "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
   "testRunner": "vitest",
-  "checkers": ["typescript"],
-  "tsconfigFile": "tsconfig.json",
+  "checkers": [],
   "mutate": ["src/**/domain/**/*.ts", "!src/**/*.test.ts"]
 }

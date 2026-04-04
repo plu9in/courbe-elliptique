@@ -122,10 +122,30 @@ describe("EllipticCurve", () => {
     const curve = new EllipticCurve(-7, 10);
     const result = curve.addPoints({ x: 1, y: 2 }, { x: 3, y: 4 });
 
-    // Verify y² = x³ + ax + b at result
     const lhs = result.y * result.y;
     const rhs = curve.evaluateAt(result.x);
-
     expect(lhs).toBeCloseTo(rhs, 10);
+  });
+
+  it("doubles a point using the tangent slope", () => {
+    const curve = new EllipticCurve(-7, 10);
+
+    // P=(1,2): s=(3·1²+(-7))/(2·2) = -4/4 = -1
+    // x3=1-2·1=-1, y3=(-1)(1-(-1))-2=-4
+    const result = curve.doublePoint({ x: 1, y: 2 });
+
+    expect(result.x).toBeCloseTo(-1, 10);
+    expect(result.y).toBeCloseTo(-4, 10);
+
+    // Verify on curve
+    expect(result.y * result.y).toBeCloseTo(curve.evaluateAt(result.x), 10);
+  });
+
+  it("computes the inverse of a point by negating y", () => {
+    const curve = new EllipticCurve(-7, 10);
+
+    const inv = curve.inversePoint({ x: 3, y: 5 });
+
+    expect(inv).toEqual({ x: 3, y: -5 });
   });
 });
