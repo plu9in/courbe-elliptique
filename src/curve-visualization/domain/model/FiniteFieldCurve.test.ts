@@ -257,4 +257,17 @@ describe("FiniteFieldCurve", () => {
     expect(current).toBeNull();
     expect(order).toBeGreaterThan(1);
   });
+
+  it("validates that a number is prime", () => {
+    expect(FiniteFieldCurve.isPrime(23)).toBe(true);
+    expect(FiniteFieldCurve.isPrime(97)).toBe(true);
+    expect(FiniteFieldCurve.isPrime(2)).toBe(true);
+  });
+
+  it("rejects non-prime numbers", () => {
+    expect(FiniteFieldCurve.isPrime(15)).toBe(false);
+    expect(FiniteFieldCurve.isPrime(1)).toBe(false);
+    expect(FiniteFieldCurve.isPrime(0)).toBe(false);
+    expect(FiniteFieldCurve.isPrime(4)).toBe(false);
+  });
 });

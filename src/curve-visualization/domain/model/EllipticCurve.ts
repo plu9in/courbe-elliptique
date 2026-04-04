@@ -9,6 +9,14 @@ export class EllipticCurve {
     this.b = b;
   }
 
+  discriminant(): number {
+    return -16 * (4 * this.a * this.a * this.a + 27 * this.b * this.b);
+  }
+
+  isSingular(): boolean {
+    return this.discriminant() === 0;
+  }
+
   evaluateAt(x: number): number {
     return x * x * x + this.a * x + this.b;
   }

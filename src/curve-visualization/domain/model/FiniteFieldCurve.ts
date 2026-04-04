@@ -11,6 +11,14 @@ export class FiniteFieldCurve {
     this.p = p;
   }
 
+  static isPrime(n: number): boolean {
+    if (n < 2) return false;
+    for (let i = 2; i * i <= n; i++) {
+      if (n % i === 0) return false;
+    }
+    return true;
+  }
+
   evaluateAt(x: number): number {
     return ((x * x * x + this.a * x + this.b) % this.p + this.p) % this.p;
   }

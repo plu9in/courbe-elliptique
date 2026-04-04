@@ -148,4 +148,24 @@ describe("EllipticCurve", () => {
 
     expect(inv).toEqual({ x: 3, y: -5 });
   });
+
+  it("computes the discriminant", () => {
+    const curve = new EllipticCurve(-1, 1);
+
+    // Δ = -16(4(-1)³ + 27(1)²) = -16(-4+27) = -16·23 = -368
+    expect(curve.discriminant()).toBe(-368);
+  });
+
+  it("detects a singular curve when the discriminant is zero", () => {
+    // 4a³ + 27b² = 0 → a=-3, b=2: 4(-27)+27(4) = -108+108 = 0
+    const curve = new EllipticCurve(-3, 2);
+
+    expect(curve.isSingular()).toBe(true);
+  });
+
+  it("reports a non-singular curve correctly", () => {
+    const curve = new EllipticCurve(-1, 1);
+
+    expect(curve.isSingular()).toBe(false);
+  });
 });
