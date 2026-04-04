@@ -186,6 +186,71 @@ body {
   margin-bottom: 12px;
 }
 
+/* ===== Collapsible Card ===== */
+
+.collapsible-card {
+  padding: 0;
+  overflow: visible;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  border-radius: var(--md-sys-shape-corner-medium);
+  transition: background 0.15s ease;
+}
+
+.collapsible-header:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.collapsible-badge {
+  margin-left: auto;
+  font-family: var(--md-sys-typescale-code-font);
+  font-size: 10px;
+  color: var(--md-sys-color-primary);
+  background: rgba(125, 211, 192, 0.1);
+  padding: 2px 8px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+
+.collapsible-chevron {
+  font-size: 9px;
+  color: var(--md-sys-color-on-surface-variant);
+  transition: transform 0.2s ease;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.collapsible-chevron[data-open="true"] {
+  transform: rotate(0deg);
+}
+
+.collapsible-chevron[data-open="false"] {
+  transform: rotate(-90deg);
+}
+
+.collapsible-body {
+  transition: height 0.2s ease;
+  padding: 0 16px;
+}
+
+.collapsible-card[data-open="true"] .collapsible-body {
+  padding-bottom: 14px;
+}
+
+.collapsible-card[data-open="false"] .collapsible-body {
+  padding-bottom: 0;
+}
+
 /* ===== Sliders ===== */
 
 .param-row {

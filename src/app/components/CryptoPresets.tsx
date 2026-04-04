@@ -28,8 +28,7 @@ export function CryptoPresets({ onSelect, activePresetId }: Props) {
   }));
 
   return (
-    <div className="card" style={{ padding: "12px" }}>
-      <div className="card-title">Crypto Curves</div>
+    <div>
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         {grouped.map((group) => (
           <div key={group.key}>

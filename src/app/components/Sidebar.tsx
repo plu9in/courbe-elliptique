@@ -1,6 +1,7 @@
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
 import type { FieldMode } from "../hooks/useCurveState.js";
 import { CryptoPresets } from "./CryptoPresets.js";
+import { CollapsibleCard } from "./CollapsibleCard.js";
 import type { CryptoPreset } from "../data/cryptoPresets.js";
 
 interface Props {
@@ -48,9 +49,11 @@ export function Sidebar({
     ? `y\u00B2 = x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b}`
     : `y\u00B2 \u2261 x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b} (mod ${p})`;
 
+  const pointCount = [selectedP, selectedQ, result].filter(Boolean).length;
+
   return (
     <div className="sidebar">
-      {/* Equation Display */}
+      {/* Equation Display — always visible, not collapsible */}
       <div className="card">
         <div className="equation-display" style={{
           fontFamily: "var(--md-sys-typescale-code-font)",
@@ -64,8 +67,7 @@ export function Sidebar({
       </div>
 
       {/* Parameters */}
-      <div className="card">
-        <div className="card-title">Parameters</div>
+      <CollapsibleCard title="Parameters" defaultOpen={true}>
         <div className="param-row">
           <span className="param-label">a</span>
           <input
@@ -112,14 +114,19 @@ export function Sidebar({
             {p} is not a prime number. The field order must be prime.
           </div>
         )}
-      </div>
+      </CollapsibleCard>
 
       {/* Crypto Presets */}
-      <CryptoPresets onSelect={onSelectPreset} activePresetId={activePresetId} />
+      <CollapsibleCard title="Crypto Curves" defaultOpen={false} badge={activePresetId ?? undefined}>
+        <CryptoPresets onSelect={onSelectPreset} activePresetId={activePresetId} />
+      </CollapsibleCard>
 
       {/* Selected Points */}
-      <div className="card">
-        <div className="card-title">Selected Points</div>
+      <CollapsibleCard
+        title="Selected Points"
+        defaultOpen={true}
+        badge={pointCount > 0 ? <>{pointCount}</> : undefined}
+      >
         <div className="points-list">
           {selectedP ? (
             <span className="point-chip p"><span className="dot" /> P = {formatCoord(selectedP, mode)}</span>
@@ -130,7 +137,7 @@ export function Sidebar({
             <span className="point-chip q"><span className="dot" /> Q = {formatCoord(selectedQ, mode)}</span>
           )}
           {result && (
-            <span className="point-chip result"><span className="dot" /> R = {result ? formatCoord(result, mode) : "O"}</span>
+            <span className="point-chip result"><span className="dot" /> R = {formatCoord(result, mode)}</span>
           )}
         </div>
         {selectedP && (
@@ -142,11 +149,10 @@ export function Sidebar({
             Clear Selection
           </button>
         )}
-      </div>
+      </CollapsibleCard>
 
       {/* Operations */}
-      <div className="card">
-        <div className="card-title">Group Operations</div>
+      <CollapsibleCard title="Group Operations" defaultOpen={true}>
         <div className="op-grid">
           <button
             className="op-btn primary"
@@ -170,46 +176,35 @@ export function Sidebar({
             -P
           </button>
           {mode === "finite" && (
-            <>
-              <div className="scalar-row" style={{ gridColumn: "1 / -1" }}>
-                <input
-                  type="number"
-                  min={1}
-                  max={200}
-                  value={scalarN}
-                  onChange={(e) => onSetScalar(Number(e.target.value))}
-                />
-                <button
-                  className="op-btn primary"
-                  style={{ flex: 1 }}
-                  disabled={!selectedP}
-                  onClick={onScalar}
-                >
-                  {scalarN}P
-                </button>
-              </div>
-            </>
+            <div className="scalar-row" style={{ gridColumn: "1 / -1" }}>
+              <input
+                type="number"
+                min={1}
+                max={200}
+                value={scalarN}
+                onChange={(e) => onSetScalar(Number(e.target.value))}
+              />
+              <button
+                className="op-btn primary"
+                style={{ flex: 1 }}
+                disabled={!selectedP}
+                onClick={onScalar}
+              >
+                {scalarN}P
+              </button>
+            </div>
           )}
         </div>
-      </div>
+      </CollapsibleCard>
 
-      {/* P3: Group Exploration & Crypto */}
+      {/* Exploration & Crypto */}
       {mode === "finite" && (
-        <div className="card">
-          <div className="card-title">Exploration & Crypto</div>
+        <CollapsibleCard title="Exploration & Crypto" defaultOpen={true}>
           <div className="op-grid">
-            <button
-              className="op-btn"
-              disabled={!selectedP}
-              onClick={onOrbit}
-            >
+            <button className="op-btn" disabled={!selectedP} onClick={onOrbit}>
               Orbit of P
             </button>
-            <button
-              className="op-btn"
-              disabled={!selectedP || !selectedQ}
-              onClick={onDLP}
-            >
+            <button className="op-btn" disabled={!selectedP || !selectedQ} onClick={onDLP}>
               DLP: find n
             </button>
             <button
@@ -237,7 +232,7 @@ export function Sidebar({
               Double-and-Add ({scalarN}P)
             </button>
           </div>
-        </div>
+        </CollapsibleCard>
       )}
     </div>
   );
