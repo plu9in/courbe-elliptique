@@ -1,5 +1,7 @@
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
 import type { FieldMode } from "../hooks/useCurveState.js";
+import { CryptoPresets } from "./CryptoPresets.js";
+import type { CryptoPreset } from "../data/cryptoPresets.js";
 
 interface Props {
   mode: FieldMode;
@@ -12,6 +14,7 @@ interface Props {
   selectedQ: CurvePoint | null;
   result: CurvePoint | null;
   scalarN: number;
+  activePresetId: string | null;
   onSetA: (a: number) => void;
   onSetB: (b: number) => void;
   onSetP: (p: number) => void;
@@ -20,6 +23,7 @@ interface Props {
   onDouble: () => void;
   onInverse: () => void;
   onScalar: () => void;
+  onSelectPreset: (preset: CryptoPreset) => void;
   onSetScalar: (n: number) => void;
 }
 
@@ -31,9 +35,9 @@ function formatCoord(pt: CurvePoint | null, mode: FieldMode): string {
 
 export function Sidebar({
   mode, a, b, p, isSingular, isPrimeValid,
-  selectedP, selectedQ, result, scalarN,
+  selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
-  onAdd, onDouble, onInverse, onScalar, onSetScalar,
+  onAdd, onDouble, onInverse, onScalar, onSetScalar, onSelectPreset,
 }: Props) {
   const equationStr = mode === "real"
     ? `y\u00B2 = x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b}`
@@ -104,6 +108,9 @@ export function Sidebar({
           </div>
         )}
       </div>
+
+      {/* Crypto Presets */}
+      <CryptoPresets onSelect={onSelectPreset} activePresetId={activePresetId} />
 
       {/* Selected Points */}
       <div className="card">

@@ -55,18 +55,23 @@ export function App() {
         selectedQ={state.selectedQ}
         result={state.result}
         scalarN={state.scalarN}
+        activePresetId={state.activePresetId}
         onSetA={(a) => dispatch({ type: "SET_A", a })}
         onSetB={(b) => dispatch({ type: "SET_B", b })}
-        onSetP={(p) => {
-          if (FiniteFieldCurve.isPrime(p)) dispatch({ type: "SET_P", p });
-          else dispatch({ type: "SET_P", p });
-        }}
+        onSetP={(p) => dispatch({ type: "SET_P", p })}
         onClearSelection={() => dispatch({ type: "CLEAR_SELECTION" })}
         onAdd={addPoints}
         onDouble={doublePoint}
         onInverse={computeInverse}
         onScalar={computeScalar}
         onSetScalar={(n) => dispatch({ type: "SET_SCALAR", n })}
+        onSelectPreset={(preset) => dispatch({
+          type: "LOAD_PRESET",
+          a: preset.toyParams.a,
+          b: preset.toyParams.b,
+          p: preset.toyParams.p,
+          presetId: preset.id,
+        })}
       />
 
       {/* Canvas */}

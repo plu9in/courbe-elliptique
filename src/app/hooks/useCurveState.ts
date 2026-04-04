@@ -16,6 +16,7 @@ interface CurveState {
   steps: StepData[];
   currentStepIndex: number;
   scalarN: number;
+  activePresetId: string | null;
 }
 
 export interface StepData {
@@ -36,18 +37,21 @@ type Action =
   | { type: "SET_RESULT"; result: CurvePoint | null; steps: StepData[] }
   | { type: "NEXT_STEP" }
   | { type: "PREV_STEP" }
-  | { type: "SET_SCALAR"; n: number };
+  | { type: "SET_SCALAR"; n: number }
+  | { type: "LOAD_PRESET"; a: number; b: number; p: number; presetId: string };
 
 function reducer(state: CurveState, action: Action): CurveState {
   switch (action.type) {
     case "SET_MODE":
       return { ...state, mode: action.mode, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
     case "SET_A":
-      return { ...state, a: action.a, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      return { ...state, a: action.a, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
     case "SET_B":
-      return { ...state, b: action.b, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      return { ...state, b: action.b, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
     case "SET_P":
-      return { ...state, p: action.p, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      return { ...state, p: action.p, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
+    case "LOAD_PRESET":
+      return { ...state, mode: "finite", a: action.a, b: action.b, p: action.p, activePresetId: action.presetId, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
     case "SELECT_POINT":
       if (!state.selectedP) return { ...state, selectedP: action.point, result: null, steps: [], currentStepIndex: 0 };
       if (!state.selectedQ) return { ...state, selectedQ: action.point };
@@ -78,6 +82,7 @@ const initialState: CurveState = {
   steps: [],
   currentStepIndex: 0,
   scalarN: 2,
+  activePresetId: null,
 };
 
 export function useCurveState() {
