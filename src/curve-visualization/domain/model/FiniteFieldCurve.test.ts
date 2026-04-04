@@ -333,4 +333,50 @@ describe("FiniteFieldCurve", () => {
       expect(curve.isGenerator(nonGen)).toBe(false);
     }
   });
+
+  it("verifies commutativity: P + Q = Q + P", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p1 = { x: 0, y: 1 };
+    const q = { x: 6, y: 4 };
+
+    const pq = curve.addPoints(p1, q);
+    const qp = curve.addPoints(q, p1);
+
+    expect(pq).toEqual(qp);
+  });
+
+  it("verifies associativity: (P + Q) + R = P + (Q + R)", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p1 = { x: 0, y: 1 };
+    const q = { x: 6, y: 4 };
+    const r = { x: 1, y: 7 };
+
+    const pq_r = curve.addPoints(curve.addPoints(p1, q), r);
+    const p_qr = curve.addPoints(p1, curve.addPoints(q, r));
+
+    expect(pq_r).toEqual(p_qr);
+  });
+
+  it("verifies identity: P + O = P", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p1 = { x: 0, y: 1 };
+
+    expect(curve.addPoints(p1, null)).toEqual(p1);
+    expect(curve.addPoints(null, p1)).toEqual(p1);
+  });
+
+  it("verifies closure: P + Q is on the curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const allPoints = curve.computeAllPoints();
+
+    // Test with several random pairs
+    for (let i = 0; i < Math.min(allPoints.length, 5); i++) {
+      for (let j = i + 1; j < Math.min(allPoints.length, 6); j++) {
+        const result = curve.addPoints(allPoints[i], allPoints[j]);
+        if (result !== null) {
+          expect(curve.isPointOnCurve(result.x, result.y)).toBe(true);
+        }
+      }
+    }
+  });
 });
