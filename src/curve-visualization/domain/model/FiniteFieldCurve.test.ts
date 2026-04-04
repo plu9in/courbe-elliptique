@@ -69,4 +69,18 @@ describe("FiniteFieldCurve", () => {
     // The curve y²=x³+x+1 over F_23 has 27 affine points (28 with point at infinity)
     expect(points).toHaveLength(27);
   });
+
+  it("confirms a valid point lies on the curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // (0, 1): 1² = 1 ≡ 0³+0+1 = 1 (mod 23) ✓
+    expect(curve.isPointOnCurve(0, 1)).toBe(true);
+  });
+
+  it("rejects a point that does not lie on the curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // (0, 5): 5² = 25 ≡ 2 (mod 23) ≠ f(0) = 1
+    expect(curve.isPointOnCurve(0, 5)).toBe(false);
+  });
 });

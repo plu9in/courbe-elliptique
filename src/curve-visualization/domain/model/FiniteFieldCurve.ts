@@ -26,6 +26,10 @@ export class FiniteFieldCurve {
     return roots;
   }
 
+  isPointOnCurve(x: number, y: number): boolean {
+    return (y * y) % this.p === this.evaluateAt(x);
+  }
+
   computeAllPoints(): CurvePoint[] {
     const points: CurvePoint[] = [];
     for (let x = 0; x < this.p; x++) {

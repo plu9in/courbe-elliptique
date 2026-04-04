@@ -75,4 +75,35 @@ describe("EllipticCurve", () => {
     // No points for x=-2
     expect(points.filter((p) => p.x === -2)).toHaveLength(0);
   });
+
+  it("finds the nearest point on the curve given approximate coordinates", () => {
+    const curve = new EllipticCurve(-1, 1);
+
+    // f(1) = 1, y = ±1. Clicking near (1, 2) should snap to (1, 1)
+    const point = curve.nearestPoint(1, 2);
+
+    expect(point).not.toBeNull();
+    expect(point!.x).toBe(1);
+    expect(point!.y).toBeCloseTo(1, 10);
+  });
+
+  it("snaps to the closest y-value on the curve for a given x", () => {
+    const curve = new EllipticCurve(-1, 1);
+
+    // f(1) = 1, y = ±1. Clicking (1, -0.5) should snap to (1, -1)
+    const point = curve.nearestPoint(1, -0.5);
+
+    expect(point).not.toBeNull();
+    expect(point!.x).toBe(1);
+    expect(point!.y).toBeCloseTo(-1, 10);
+  });
+
+  it("returns null when no real point exists at the given x", () => {
+    const curve = new EllipticCurve(-1, 1);
+
+    // f(-2) = -5 < 0 → no real points
+    const point = curve.nearestPoint(-2, 0);
+
+    expect(point).toBeNull();
+  });
 });

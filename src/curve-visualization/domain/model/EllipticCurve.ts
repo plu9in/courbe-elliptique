@@ -20,6 +20,15 @@ export class EllipticCurve {
     return [y, -y];
   }
 
+  nearestPoint(x: number, targetY: number): CurvePoint | null {
+    const yValues = this.yValuesAt(x);
+    if (yValues.length === 0) return null;
+    const closest = yValues.reduce((a, b) =>
+      Math.abs(a - targetY) <= Math.abs(b - targetY) ? a : b
+    );
+    return { x, y: closest };
+  }
+
   computePoints(xMin: number, xMax: number, step: number): CurvePoint[] {
     const points: CurvePoint[] = [];
     for (let x = xMin; x <= xMax; x += step) {
