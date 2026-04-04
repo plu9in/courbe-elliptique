@@ -83,4 +83,49 @@ describe("FiniteFieldCurve", () => {
     // (0, 5): 5² = 25 ≡ 2 (mod 23) ≠ f(0) = 1
     expect(curve.isPointOnCurve(0, 5)).toBe(false);
   });
+
+  it("computes the modular inverse", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // 6 · 4 = 24 ≡ 1 (mod 23)
+    expect(curve.modInverse(6)).toBe(4);
+    // 3 · 8 = 24 ≡ 1 (mod 23)
+    expect(curve.modInverse(3)).toBe(8);
+  });
+
+  it("adds two distinct points over a finite field", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // P=(0,1), Q=(6,4)
+    // s = (4-1)·(6-0)⁻¹ mod 23 = 3·4 = 12
+    // x3 = (144-0-6) mod 23 = 138 mod 23 = 0
+    // y3 = (12·(0-0)-1) mod 23 = -1 mod 23 = 22
+    const result = curve.addPoints({ x: 0, y: 1 }, { x: 6, y: 4 });
+
+    expect(result.x).toBe(0);
+    expect(result.y).toBe(22);
+  });
+
+  it("addition result lies on the finite field curve", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const result = curve.addPoints({ x: 0, y: 1 }, { x: 6, y: 4 });
+
+    expect(curve.isPointOnCurve(result.x, result.y)).toBe(true);
+  });
+
+  it("adds a different pair of points correctly", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // P=(1,7), Q=(3,10)
+    const result = curve.addPoints({ x: 1, y: 7 }, { x: 3, y: 10 });
+
+    expect(curve.isPointOnCurve(result.x, result.y)).toBe(true);
+  });
+
+  it("modular inverse throws when no inverse exists", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+
+    // 0 has no modular inverse
+    expect(() => curve.modInverse(0)).toThrow("No modular inverse");
+  });
 });

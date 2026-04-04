@@ -29,6 +29,13 @@ export class EllipticCurve {
     return { x, y: closest };
   }
 
+  addPoints(p: CurvePoint, q: CurvePoint): CurvePoint {
+    const s = (q.y - p.y) / (q.x - p.x);
+    const x3 = s * s - p.x - q.x;
+    const y3 = s * (p.x - x3) - p.y;
+    return { x: x3, y: y3 };
+  }
+
   computePoints(xMin: number, xMax: number, step: number): CurvePoint[] {
     const points: CurvePoint[] = [];
     for (let x = xMin; x <= xMax; x += step) {

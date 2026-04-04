@@ -26,6 +26,23 @@ export class FiniteFieldCurve {
     return roots;
   }
 
+  modInverse(a: number): number {
+    const m = this.p;
+    const normalized = ((a % m) + m) % m;
+    for (let i = 1; i < m; i++) {
+      if ((normalized * i) % m === 1) return i;
+    }
+    throw new Error(`No modular inverse for ${a} mod ${m}`);
+  }
+
+  addPoints(p1: CurvePoint, q: CurvePoint): CurvePoint {
+    const mod = (n: number) => ((n % this.p) + this.p) % this.p;
+    const s = mod((q.y - p1.y) * this.modInverse(q.x - p1.x));
+    const x3 = mod(s * s - p1.x - q.x);
+    const y3 = mod(s * (p1.x - x3) - p1.y);
+    return { x: x3, y: y3 };
+  }
+
   isPointOnCurve(x: number, y: number): boolean {
     return (y * y) % this.p === this.evaluateAt(x);
   }

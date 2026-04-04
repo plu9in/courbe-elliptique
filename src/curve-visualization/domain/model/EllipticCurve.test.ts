@@ -106,4 +106,26 @@ describe("EllipticCurve", () => {
 
     expect(point).toBeNull();
   });
+
+  it("adds two distinct points with the correct slope", () => {
+    const curve = new EllipticCurve(-7, 10);
+    // P=(1,2) on curve: 4 = 1-7+10 ✓. Q=(3,4): 16 = 27-21+10 ✓
+    const result = curve.addPoints({ x: 1, y: 2 }, { x: 3, y: 4 });
+
+    // s = (4-2)/(3-1) = 1
+    // x3 = 1-1-3 = -3, y3 = 1*(1-(-3))-2 = 2
+    expect(result.x).toBeCloseTo(-3, 10);
+    expect(result.y).toBeCloseTo(2, 10);
+  });
+
+  it("addition result lies on the curve", () => {
+    const curve = new EllipticCurve(-7, 10);
+    const result = curve.addPoints({ x: 1, y: 2 }, { x: 3, y: 4 });
+
+    // Verify y² = x³ + ax + b at result
+    const lhs = result.y * result.y;
+    const rhs = curve.evaluateAt(result.x);
+
+    expect(lhs).toBeCloseTo(rhs, 10);
+  });
 });
