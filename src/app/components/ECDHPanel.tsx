@@ -66,14 +66,34 @@ export function ECDHPanel({
 
   // === Step generators for each phase ===
 
+  function modularFormula(k: number, base: CurvePoint, baseName: string, trail: CurvePoint[]): string | undefined {
+    const pp = curve.p;
+    const mod = (n: number) => ((n % pp) + pp) % pp;
+    if (k === 1) return `1 \\cdot ${baseName} = ${baseName} = (${trail[0].x},\\, ${trail[0].y})`;
+    const prev = trail[k - 2];
+    const cur = trail[k - 1];
+    if (k === 2 && prev.x === base.x && prev.y === base.y) {
+      const s = mod((3 * base.x * base.x + curve.a) * curve.modInverse(2 * base.y));
+      return `\\begin{aligned} &${k}${baseName} = \\text{double}(${baseName}) \\quad s \\equiv (3{\\cdot}${base.x}^2{+}${curve.a}){\\cdot}(2{\\cdot}${base.y})^{-1} \\equiv ${s} \\\\ &x_R \\equiv ${s}^2 {-} 2{\\cdot}${base.x} \\equiv ${cur.x} \\quad y_R \\equiv ${s}(${base.x}{-}${cur.x}){-}${base.y} \\equiv ${cur.y} \\pmod{${pp}} \\end{aligned}`;
+    }
+    const dx = mod(base.x - prev.x);
+    const dy = mod(base.y - prev.y);
+    try {
+      const s = mod(dy * curve.modInverse(dx));
+      return `\\begin{aligned} &${k}${baseName} = (${prev.x},${prev.y}) + (${base.x},${base.y}) \\quad s \\equiv ${dy}{\\cdot}${dx}^{-1} \\equiv ${s} \\\\ &x_R \\equiv ${s}^2{-}${prev.x}{-}${base.x} \\equiv ${cur.x} \\quad y_R \\equiv ${s}(${prev.x}{-}${cur.x}){-}${prev.y} \\equiv ${cur.y} \\pmod{${pp}} \\end{aligned}`;
+    } catch { return undefined; }
+  }
+
   function makeAliceSteps(a: number): StepData[] {
     const steps: StepData[] = [];
+    const fullTrail = buildTrail(curve, G, a);
     for (let k = 1; k <= a; k++) {
-      const partial = buildTrail(curve, G, k);
+      const partial = fullTrail.slice(0, k);
       const isLast = k === a;
       steps.push({
         label: `Alice: ${k}G`,
         explanation: isLast ? `A = ${a}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
+        formula: modularFormula(k, G, "G", fullTrail),
         gradientPaths: [{
           points: partial,
           color: ALICE_PATH,
@@ -89,13 +109,15 @@ export function ECDHPanel({
 
   function makeBobSteps(b: number): StepData[] {
     const aLandmarks: LabeledPoint[] = alicePub ? [{ point: G, color: G_LABEL, label: "G" }, { point: alicePub, color: ALICE_END, label: "A" }] : [{ point: G, color: G_LABEL, label: "G" }];
+    const fullTrail = buildTrail(curve, G, b);
     const steps: StepData[] = [];
     for (let k = 1; k <= b; k++) {
-      const partial = buildTrail(curve, G, k);
+      const partial = fullTrail.slice(0, k);
       const isLast = k === b;
       steps.push({
         label: `Bob: ${k}G`,
         explanation: isLast ? `B = ${b}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
+        formula: modularFormula(k, G, "G", fullTrail),
         gradientPaths: [{
           points: partial,
           color: BOB_PATH,
@@ -126,10 +148,10 @@ export function ECDHPanel({
       { point: bobPub, color: BOB_END, label: "B" },
     ];
 
+    const fullTrail = buildTrail(curve, bobPub, totalSteps);
     const steps: StepData[] = [];
     for (let k = 1; k <= totalSteps; k++) {
-      const partial = buildTrail(curve, bobPub, k);
-      const allPts = partial;
+      const partial = fullTrail.slice(0, k);
       const isLast = k === totalSteps;
       const current = partial[k - 1];
 
@@ -137,14 +159,14 @@ export function ECDHPanel({
       const paths: GradientPath[] = [];
       const commonEnd = Math.min(k, commonLen);
       if (commonEnd >= 1) {
-        paths.push({ points: allPts.slice(0, commonEnd), color: COMMON_PATH });
+        paths.push({ points: partial.slice(0, commonEnd), color: COMMON_PATH });
       }
       if (k > commonLen) {
         const divEnd = Math.min(k, maxLen);
-        paths.push({ points: allPts.slice(Math.max(0, commonLen - 1), divEnd), color: DIVERGE_PATH, startIndex: commonLen + 1 });
+        paths.push({ points: partial.slice(Math.max(0, commonLen - 1), divEnd), color: DIVERGE_PATH, startIndex: commonLen + 1 });
       }
       if (k > maxLen) {
-        paths.push({ points: allPts.slice(Math.max(0, maxLen - 1), k), color: EXTRA_PATH, startIndex: maxLen + 1 });
+        paths.push({ points: partial.slice(Math.max(0, maxLen - 1), k), color: EXTRA_PATH, startIndex: maxLen + 1 });
       }
       if (isLast && paths.length > 0) {
         const lastPath = paths[paths.length - 1];
@@ -153,43 +175,12 @@ export function ECDHPanel({
         lastPath.endSize = 10;
       }
 
-      // Build detailed modular arithmetic formula
-      let formula: string | undefined;
-      if (k === 1) {
-        formula = `1 \\cdot B = B = (${current.x},\\, ${current.y})`;
-      } else {
-        const prev = partial[k - 2]; // (k-1)·B
-        const B = bobPub;
-        if (k === 2 && prev.x === B.x && prev.y === B.y) {
-          // Doubling: 2·B = B + B (tangent)
-          const s = mod((3 * B.x * B.x + curve.a) * curve.modInverse(2 * B.y));
-          const x3 = mod(s * s - 2 * B.x);
-          const y3 = mod(s * (B.x - x3) - B.y);
-          formula = `\\begin{aligned} &${k}B = ${k-1}B + B = \\text{double}(B) \\\\ &s = (3 \\cdot ${B.x}^2 + ${curve.a}) \\cdot (2 \\cdot ${B.y})^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}} \\\\ &x_R = ${s}^2 - 2 \\cdot ${B.x} \\equiv ${x3} \\!\\!\\!\\pmod{${pp}} \\\\ &y_R = ${s}(${B.x} - ${x3}) - ${B.y} \\equiv ${y3} \\!\\!\\!\\pmod{${pp}} \\end{aligned}`;
-        } else {
-          // Addition: k·B = (k-1)·B + B
-          const dx = mod(B.x - prev.x);
-          const dy = mod(B.y - prev.y);
-          let s: number;
-          try {
-            s = mod(dy * curve.modInverse(dx));
-          } catch {
-            formula = `${k}B = ${k-1}B + B \\quad \\text{(vertical line → O)}`;
-            steps.push({ label: isLast ? `S = ${a}\u00b7B` : `${k}\u00b7B`, explanation: `${k}\u00b7B = (${current.x}, ${current.y})`, formula, gradientPaths: paths, landmarks: allLandmarks });
-            continue;
-          }
-          const x3 = mod(s * s - prev.x - B.x);
-          const y3 = mod(s * (prev.x - x3) - prev.y);
-          formula = `\\begin{aligned} &${k}B = ${k-1}B + B = (${prev.x},${prev.y}) + (${B.x},${B.y}) \\\\ &s = (${B.y} - ${prev.y}) \\cdot (${B.x} - ${prev.x})^{-1} \\equiv ${dy} \\cdot ${dx}^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}} \\\\ &x_R = ${s}^2 - ${prev.x} - ${B.x} \\equiv ${x3} \\!\\!\\!\\pmod{${pp}} \\\\ &y_R = ${s}(${prev.x} - ${x3}) - ${prev.y} \\equiv ${y3} \\!\\!\\!\\pmod{${pp}} \\end{aligned}`;
-        }
-      }
-
       steps.push({
         label: isLast ? `S = ${a}\u00b7B` : `${k}\u00b7B`,
         explanation: isLast
           ? `S = ${a}\u00b7B = ${a}\u00b7${b}G = ${a * b}G = (${current.x}, ${current.y})`
           : `${k}\u00b7B = (${current.x}, ${current.y})`,
-        formula,
+        formula: modularFormula(k, bobPub, "B", fullTrail),
         gradientPaths: paths,
         landmarks: allLandmarks,
       });
