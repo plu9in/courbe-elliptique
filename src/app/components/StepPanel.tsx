@@ -44,9 +44,10 @@ function Legend({ step }: { step: StepData }) {
   return (
     <div style={{
       display: "flex",
-      gap: "12px",
-      marginTop: "4px",
+      gap: "8px",
       flexWrap: "wrap",
+      gridColumn: "1 / -1",
+      marginTop: "2px",
     }}>
       {hasSecant && (
         <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#FF7B6B" }}>
