@@ -586,4 +586,60 @@ describe("FiniteFieldCurve", () => {
     // Try to open with different blinding
     expect(curve.pedersenVerify(g, h, commitment, 5, 12)).toBe(false);
   });
+
+  // ===== P4/P5 Edge Cases =====
+
+  it("negative scalar computes inverse then multiplies", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const p = { x: 0, y: 1 };
+
+    const pos = curve.scalarMultiply(p, 3)!;
+    const neg = curve.scalarMultiply(p, -3)!;
+    const inv = curve.inversePoint(pos);
+
+    expect(neg).toEqual(inv);
+  });
+
+  it("ECDSA nonce reuse allows private key recovery (prime-order base point)", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    // 4G = (13, 16) has order 7 (prime), required for clean nonce reuse attack
+    const g = { x: 13, y: 16 };
+    const privateKey = 3;
+
+    const result = curve.ecdsaNonceReuse(g, privateKey, "Hello", "World", 2);
+
+    expect(result.sig1.r).toBe(result.sig2.r); // Same r since same nonce
+    expect(result.recoveredKey).toBe(privateKey);
+  });
+
+  it("ECDSA verification fails with tampered message", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const d = 7;
+    const pubQ = curve.scalarMultiply(g, d)!;
+
+    const sig = curve.ecdsaSign(g, d, "Hello", 3)!;
+    const tampered = curve.ecdsaVerify(g, pubQ, "Tampered", { r: sig.r, s: sig.s });
+
+    expect(tampered.valid).toBe(false);
+  });
+
+  it("ECDSA verification fails with wrong public key", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const d = 7;
+    const wrongKey = curve.scalarMultiply(g, 9)!;
+
+    const sig = curve.ecdsaSign(g, d, "Hello", 3)!;
+    const wrongVerif = curve.ecdsaVerify(g, wrongKey, "Hello", { r: sig.r, s: sig.s });
+
+    expect(wrongVerif.valid).toBe(false);
+  });
+
+  it("point at infinity has order 1", () => {
+    // O is represented as null in our model
+    // scalarMultiply(anything, 0) = null (O), and O+O=O
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    expect(curve.scalarMultiply({ x: 0, y: 1 }, 0)).toBeNull();
+  });
 });

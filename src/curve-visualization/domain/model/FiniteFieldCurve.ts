@@ -76,6 +76,10 @@ export class FiniteFieldCurve {
 
   scalarMultiply(pt: CurvePoint, n: number): CurvePoint | null {
     if (n === 0) return null;
+    if (n < 0) {
+      const inv = this.inversePoint(pt);
+      return this.scalarMultiply(inv, -n);
+    }
     if (n === 1) return pt;
     let result: CurvePoint | null = pt;
     for (let i = 1; i < n; i++) {
@@ -166,6 +170,37 @@ export class FiniteFieldCurve {
     else if (u2Q) v = u2Q;
     const valid = v !== null && v.x % n === sig.r;
     return { valid, u1, u2, v, e, w };
+  }
+
+  /** Demonstrate nonce reuse vulnerability: recover private key from two signatures */
+  ecdsaNonceReuse(
+    g: CurvePoint,
+    privateKey: number,
+    msg1: string,
+    msg2: string,
+    sharedNonce: number,
+  ): { sig1: { r: number; s: number; e: number }; sig2: { r: number; s: number; e: number }; recoveredKey: number | null } {
+    const n = this.pointOrder(g);
+    const sig1Full = this.ecdsaSign(g, privateKey, msg1, sharedNonce);
+    const sig2Full = this.ecdsaSign(g, privateKey, msg2, sharedNonce);
+    if (!sig1Full || !sig2Full) return { sig1: { r: 0, s: 0, e: 0 }, sig2: { r: 0, s: 0, e: 0 }, recoveredKey: null };
+
+    const sig1 = { r: sig1Full.r, s: sig1Full.s, e: sig1Full.e };
+    const sig2 = { r: sig2Full.r, s: sig2Full.s, e: sig2Full.e };
+
+    // Attack: k = (e1 - e2) / (s1 - s2) mod n
+    const ds = ((sig1.s - sig2.s) % n + n) % n;
+    const de = ((sig1.e - sig2.e) % n + n) % n;
+    try {
+      const dsInv = this.modInverseOf(ds, n);
+      const kRecovered = (de * dsInv) % n;
+      // d = (s1*k - e1) / r mod n
+      const rInv = this.modInverseOf(sig1.r, n);
+      const dRecovered = ((sig1.s * kRecovered - sig1.e) % n + n) % n * rInv % n;
+      return { sig1, sig2, recoveredKey: dRecovered };
+    } catch {
+      return { sig1, sig2, recoveredKey: null };
+    }
   }
 
   /** Double-and-add scalar multiplication with step trace */

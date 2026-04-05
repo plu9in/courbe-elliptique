@@ -12,6 +12,8 @@ interface CurveState {
   p: number;
   selectedP: CurvePoint | null;
   selectedQ: CurvePoint | null;
+  ecdhA: number;
+  ecdhB: number;
   result: CurvePoint | null;
   steps: StepData[];
   currentStepIndex: number;
@@ -67,6 +69,8 @@ type Action =
   | { type: "PREV_STEP" }
   | { type: "SKIP_TO_END" }
   | { type: "SET_SCALAR"; n: number }
+  | { type: "SET_ECDH_A"; value: number }
+  | { type: "SET_ECDH_B"; value: number }
   | { type: "LOAD_PRESET"; a: number; b: number; p: number; presetId: string };
 
 function reducer(state: CurveState, action: Action): CurveState {
@@ -81,10 +85,20 @@ function reducer(state: CurveState, action: Action): CurveState {
       return { ...state, p: action.p, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
     case "LOAD_PRESET":
       return { ...state, mode: "finite", a: action.a, b: action.b, p: action.p, activePresetId: action.presetId, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
-    case "SELECT_POINT":
-      if (!state.selectedP) return { ...state, selectedP: action.point, result: null, steps: [], currentStepIndex: 0 };
-      if (!state.selectedQ) return { ...state, selectedQ: action.point };
-      return { ...state, selectedP: action.point, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+    case "SELECT_POINT": {
+      const pt = action.point;
+      // Deselect P if clicking the same point
+      if (state.selectedP && state.selectedP.x === pt.x && state.selectedP.y === pt.y) {
+        return { ...state, selectedP: state.selectedQ, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      }
+      // Deselect Q if clicking the same point
+      if (state.selectedQ && state.selectedQ.x === pt.x && state.selectedQ.y === pt.y) {
+        return { ...state, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      }
+      if (!state.selectedP) return { ...state, selectedP: pt, result: null, steps: [], currentStepIndex: 0 };
+      if (!state.selectedQ) return { ...state, selectedQ: pt };
+      return { ...state, selectedP: pt, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+    }
     case "CLEAR_SELECTION":
       return { ...state, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
     case "SET_RESULT":
@@ -97,6 +111,10 @@ function reducer(state: CurveState, action: Action): CurveState {
       return { ...state, currentStepIndex: Math.max(state.steps.length - 1, 0) };
     case "SET_SCALAR":
       return { ...state, scalarN: action.n };
+    case "SET_ECDH_A":
+      return { ...state, ecdhA: action.value };
+    case "SET_ECDH_B":
+      return { ...state, ecdhB: action.value };
     default:
       return state;
   }
@@ -113,6 +131,8 @@ const initialState: CurveState = {
   steps: [],
   currentStepIndex: 0,
   scalarN: 2,
+  ecdhA: 7,
+  ecdhB: 11,
   activePresetId: null,
 };
 
@@ -402,20 +422,38 @@ export function useCurveState() {
   const computeECDH = useCallback(() => {
     if (!state.selectedP || state.mode === "real") return;
     const g = state.selectedP;
-    const a = 7, b = 11;
-    const pubA = finiteCurve.scalarMultiply(g, a)!;
-    const pubB = finiteCurve.scalarMultiply(g, b)!;
-    const sharedA = finiteCurve.scalarMultiply(pubB, a);
-    const sharedB = finiteCurve.scalarMultiply(pubA, b);
+    const ka = state.ecdhA, kb = state.ecdhB;
+    const pubA = finiteCurve.scalarMultiply(g, ka);
+    const pubB = finiteCurve.scalarMultiply(g, kb);
+    if (!pubA || !pubB) { dispatch({ type: "SET_RESULT", result: null, steps: [{ label: "Error", explanation: "Invalid key (produces identity). Choose a different value." }] }); return; }
+    const sharedA = finiteCurve.scalarMultiply(pubB, ka);
+    const sharedB = finiteCurve.scalarMultiply(pubA, kb);
+    const ab = ka * kb;
     const steps: StepData[] = [
-      { label: "Base point G", explanation: `G = (${g.x}, ${g.y})`, highlightPoint: g },
-      { label: "Alice: a = 7", explanation: `A = 7G = (${pubA.x}, ${pubA.y})`, highlightPoint: pubA, formula: `A = aG = 7 \\cdot G` },
-      { label: "Bob: b = 11", explanation: `B = 11G = (${pubB.x}, ${pubB.y})`, highlightPoint: pubB, formula: `B = bG = 11 \\cdot G` },
-      { label: "Alice computes", explanation: sharedA ? `S = aB = 7 \\cdot B = (${sharedA.x}, ${sharedA.y})` : "S = O", highlightPoint: sharedA ?? undefined, formula: `S_A = a \\cdot B = 7 \\cdot 11G = 77G` },
-      { label: "Bob computes", explanation: sharedB ? `S = bA = 11 \\cdot A = (${sharedB.x}, ${sharedB.y})` : "S = O", highlightPoint: sharedB ?? undefined, formula: `S_B = b \\cdot A = 11 \\cdot 7G = 77G` },
-      { label: "Shared secret", explanation: sharedA && sharedB ? `S_A = S_B = (${sharedA.x}, ${sharedA.y}) ✓` : "Both reach O", formula: `a \\cdot bG = b \\cdot aG \\quad \\text{(commutativity)}` },
+      { label: "Base point G", explanation: `G = (${g.x}, ${g.y})`, points: [{ point: g, color: "#FFD166", label: "G" }] },
+      { label: `Alice: a = ${ka}`, explanation: `A = ${ka}G = (${pubA.x}, ${pubA.y})`, points: [{ point: pubA, color: "#FFD166", label: "A" }], formula: `A = aG = ${ka} \\cdot G` },
+      { label: `Bob: b = ${kb}`, explanation: `B = ${kb}G = (${pubB.x}, ${pubB.y})`, points: [{ point: pubB, color: "#FF7B6B", label: "B" }], formula: `B = bG = ${kb} \\cdot G` },
+      { label: "Alice computes S", explanation: sharedA ? `S = ${ka}B = (${sharedA.x}, ${sharedA.y})` : "S = O", points: sharedA ? [{ point: sharedA, color: "#06D6A0", label: "S" }] : [], formula: `S_A = a \\cdot B = ${ka} \\cdot ${kb}G = ${ab}G` },
+      { label: "Bob computes S", explanation: sharedB ? `S = ${kb}A = (${sharedB.x}, ${sharedB.y})` : "S = O", points: sharedB ? [{ point: sharedB, color: "#06D6A0", label: "S" }] : [], formula: `S_B = b \\cdot A = ${kb} \\cdot ${ka}G = ${ab}G` },
+      { label: "Shared secret", explanation: sharedA && sharedB ? `S_A = S_B = (${sharedA.x}, ${sharedA.y}) \u2714` : "Both reach O", formula: `a \\cdot bG = b \\cdot aG \\quad \\text{(commutativity)}` },
     ];
     dispatch({ type: "SET_RESULT", result: sharedA, steps });
+  }, [state.selectedP, state.mode, state.ecdhA, state.ecdhB, finiteCurve]);
+
+  const computeNonceReuse = useCallback(() => {
+    if (!state.selectedP || state.mode === "real") return;
+    const g = state.selectedP;
+    const d = 7;
+    const result = finiteCurve.ecdsaNonceReuse(g, d, "Hello", "World", 3);
+    const steps: StepData[] = [
+      { label: "Setup", explanation: `Private key d = ${d}. Signer signs TWO different messages with the SAME nonce k = 3.`, formula: `\\text{DANGER: same } k \\text{ for both signatures}` },
+      { label: "Signature 1", explanation: `Sign("Hello"): (r = ${result.sig1.r}, s = ${result.sig1.s}), hash e = ${result.sig1.e}`, formula: `s_1 = k^{-1}(e_1 + r \\cdot d) \\bmod n` },
+      { label: "Signature 2", explanation: `Sign("World"): (r = ${result.sig2.r}, s = ${result.sig2.s}), hash e = ${result.sig2.e}`, formula: `s_2 = k^{-1}(e_2 + r \\cdot d) \\bmod n` },
+      { label: "Same r!", explanation: `Both signatures share r = ${result.sig1.r} because same nonce k was used. This leaks information.`, formula: `r_1 = r_2 = ${result.sig1.r} \\quad \\text{(same } k \\text{)}` },
+      { label: "Attack: recover k", explanation: `k = (e_1 - e_2) / (s_1 - s_2) mod n`, formula: `k = \\frac{e_1 - e_2}{s_1 - s_2} \\bmod n` },
+      { label: result.recoveredKey !== null ? "Key recovered!" : "Attack failed", explanation: result.recoveredKey !== null ? `Private key d = ${result.recoveredKey} recovered from public signatures alone! The signer's secret is completely compromised.` : "Attack failed (group order not prime for this base point). Try a generator of prime order.", formula: result.recoveredKey !== null ? `d = \\frac{s_1 \\cdot k - e_1}{r} \\equiv ${result.recoveredKey} \\pmod{n} \\quad \\text{COMPROMISED}` : `\\text{gcd}(s_1 - s_2, n) > 1` },
+    ];
+    dispatch({ type: "SET_RESULT", result: null, steps });
   }, [state.selectedP, state.mode, finiteCurve]);
 
   const computeECDSA = useCallback(() => {
@@ -595,5 +633,6 @@ export function useCurveState() {
     computeDoubleAndAdd,
     computeSchnorr,
     computePedersen,
+    computeNonceReuse,
   };
 }

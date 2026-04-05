@@ -29,10 +29,15 @@ interface Props {
   onECDH: () => void;
   onECDSA: () => void;
   onDoubleAndAdd: () => void;
+  onNonceReuse: () => void;
   onSchnorr: () => void;
   onPedersen: () => void;
   onSelectPreset: (preset: CryptoPreset) => void;
   onSetScalar: (n: number) => void;
+  ecdhA: number;
+  ecdhB: number;
+  onSetEcdhA: (v: number) => void;
+  onSetEcdhB: (v: number) => void;
 }
 
 function formatCoord(pt: CurvePoint | null, mode: FieldMode): string {
@@ -122,7 +127,7 @@ export function Sidebar({
   mode, a, b, p, isSingular, isPrimeValid,
   selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
-  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onSchnorr, onPedersen, onSetScalar, onSelectPreset,
+  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onNonceReuse, onSchnorr, onPedersen, onSetScalar, ecdhA, ecdhB, onSetEcdhA, onSetEcdhB, onSelectPreset,
 }: Props) {
   return (
     <div className="sidebar">
@@ -160,8 +165,15 @@ export function Sidebar({
               <div className="op-grid">
                 <button className="op-btn" disabled={!selectedP} onClick={onOrbit}>Orbit of P</button>
                 <button className="op-btn" disabled={!selectedP || !selectedQ} onClick={onDLP}>DLP: find n</button>
-                <button className="op-btn primary" disabled={!selectedP} onClick={onECDH} style={{ gridColumn: "1 / -1" }}>ECDH Demo (a=7, b=11)</button>
+                <div style={{ gridColumn: "1 / -1", display: "flex", gap: "6px", alignItems: "center" }}>
+                  <span style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", whiteSpace: "nowrap" }}>Alice</span>
+                  <input type="number" min={1} max={200} value={ecdhA} onChange={(e) => onSetEcdhA(Number(e.target.value))} style={{ width: "48px" }} />
+                  <span style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", whiteSpace: "nowrap" }}>Bob</span>
+                  <input type="number" min={1} max={200} value={ecdhB} onChange={(e) => onSetEcdhB(Number(e.target.value))} style={{ width: "48px" }} />
+                  <button className="op-btn primary" style={{ flex: 1 }} disabled={!selectedP} onClick={onECDH}>ECDH</button>
+                </div>
                 <button className="op-btn primary" disabled={!selectedP} onClick={onECDSA} style={{ gridColumn: "1 / -1" }}>ECDSA Sign &amp; Verify</button>
+                <button className="op-btn" disabled={!selectedP} onClick={onNonceReuse} style={{ gridColumn: "1 / -1", color: "var(--md-sys-color-error)" }}>ECDSA Nonce Reuse Attack</button>
                 <button className="op-btn" disabled={!selectedP} onClick={onDoubleAndAdd} style={{ gridColumn: "1 / -1" }}>Double-and-Add ({scalarN}P)</button>
               </div>
             </CollapsibleCard>
