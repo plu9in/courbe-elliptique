@@ -127,7 +127,7 @@ function reducer(state: CurveState, action: Action): CurveState {
     case "CLEAR_SELECTION":
       return { ...state, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
     case "SET_RESULT":
-      return { ...state, result: action.result, steps: action.steps, currentStepIndex: 0 };
+      return { ...state, result: action.result, steps: action.steps, currentStepIndex: Math.max(action.steps.length - 1, 0) };
     case "NEXT_STEP":
       return { ...state, currentStepIndex: Math.min(state.currentStepIndex + 1, state.steps.length - 1) };
     case "PREV_STEP":

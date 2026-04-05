@@ -83,7 +83,7 @@ function ParametersCard({ mode, a, b, p, isSingular, isPrimeValid, onSetA, onSet
   onSetA: (a: number) => void; onSetB: (b: number) => void; onSetP: (p: number) => void;
 }) {
   return (
-    <CollapsibleCard title="Parameters" defaultOpen={true}>
+    <CollapsibleCard title="Parameters" defaultOpen={false}>
       <div className="param-row">
         <span className="param-label">a</span>
         <input type="range" min={-10} max={10} step={1} value={a} onChange={(e) => onSetA(Number(e.target.value))} />
@@ -116,7 +116,7 @@ function PointsCard({ mode, selectedP, selectedQ, result, onClearSelection }: {
 }) {
   const pointCount = [selectedP, selectedQ, result].filter(Boolean).length;
   return (
-    <CollapsibleCard title="Selected Points" defaultOpen={true} badge={pointCount > 0 ? <>{pointCount}</> : undefined}>
+    <CollapsibleCard title="Selected Points" defaultOpen={false} badge={pointCount > 0 ? <>{pointCount}</> : undefined}>
       <div className="points-list">
         {selectedP ? (
           <span className="point-chip p"><span className="dot" /> P = {formatCoord(selectedP, mode)}</span>
@@ -159,7 +159,7 @@ export function Sidebar({
       {/* ===== Mode: Real or Finite Field ===== */}
       {mode !== "zk" && (
         <>
-          <CollapsibleCard title="Group Operations" defaultOpen={true}>
+          <CollapsibleCard title="Group Operations" defaultOpen={false}>
             <div className="op-grid">
               <button className="op-btn primary" disabled={!selectedP || !selectedQ} onClick={onAdd}>P + Q</button>
               <button className="op-btn" disabled={!selectedP} onClick={onDouble}>2P</button>
@@ -175,7 +175,7 @@ export function Sidebar({
 
           {mode === "finite" && (
             <>
-              <CollapsibleCard title="Exploration & Crypto" defaultOpen={true}>
+              <CollapsibleCard title="Exploration & Crypto" defaultOpen={false}>
                 <div className="op-grid">
                   <button className="op-btn" disabled={!selectedP} onClick={onOrbit}>Orbit of P</button>
                   <button className="op-btn" disabled={!selectedP || !selectedQ} onClick={onDLP}>DLP: find n</button>
@@ -208,7 +208,7 @@ export function Sidebar({
       {/* ===== Mode: Zero-Knowledge ===== */}
       {mode === "zk" && (
         <>
-          <CollapsibleCard title="Zero-Knowledge Proofs" defaultOpen={true}>
+          <CollapsibleCard title="Zero-Knowledge Proofs" defaultOpen={false}>
             <div style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", marginBottom: "12px", lineHeight: "1.6" }}>
               Prove you know a secret <strong style={{ color: "var(--md-sys-color-on-surface)" }}>without revealing it</strong>.
               The verifier is convinced, but learns nothing about your secret.
@@ -223,7 +223,7 @@ export function Sidebar({
             </div>
           </CollapsibleCard>
 
-          <CollapsibleCard title="How it works" defaultOpen={true}>
+          <CollapsibleCard title="How it works" defaultOpen={false}>
             <div style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", lineHeight: "1.7" }}>
               <div style={{ marginBottom: "10px" }}>
                 <strong style={{ color: "#FFD166" }}>Schnorr</strong>
