@@ -108,18 +108,20 @@ type Action =
   | { type: "SET_ECDH_B"; value: number }
   | { type: "LOAD_PRESET"; a: number; b: number; p: number; presetId: string };
 
+const cleanInteraction = { selectedP: null, selectedQ: null, result: null, steps: [] as StepData[], currentStepIndex: 0, ecdhPhase: "idle" as ECDHPhase, ecdhAliceSecret: null, ecdhBobSecret: null };
+
 function reducer(state: CurveState, action: Action): CurveState {
   switch (action.type) {
     case "SET_MODE":
-      return { ...state, mode: action.mode, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      return { ...state, mode: action.mode, ...cleanInteraction };
     case "SET_A":
-      return { ...state, a: action.a, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
+      return { ...state, a: action.a, ...cleanInteraction, activePresetId: null };
     case "SET_B":
-      return { ...state, b: action.b, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
+      return { ...state, b: action.b, ...cleanInteraction, activePresetId: null };
     case "SET_P":
-      return { ...state, p: action.p, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0, activePresetId: null };
+      return { ...state, p: action.p, ...cleanInteraction, activePresetId: null };
     case "LOAD_PRESET":
-      return { ...state, mode: "finite", a: action.a, b: action.b, p: action.p, activePresetId: action.presetId, selectedP: null, selectedQ: null, result: null, steps: [], currentStepIndex: 0 };
+      return { ...state, mode: "finite", a: action.a, b: action.b, p: action.p, activePresetId: action.presetId, ...cleanInteraction };
     case "SELECT_POINT": {
       const pt = action.point;
       // Deselect P if clicking the same point
