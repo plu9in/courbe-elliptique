@@ -291,11 +291,22 @@ function drawVerticalFiniteField(
 
 // ===== Orbit trail =====
 
-function drawTrail(ctx: CanvasRenderingContext2D, trail: CurvePoint[], vp: Viewport, w: number, h: number) {
+function drawTrail(
+  ctx: CanvasRenderingContext2D,
+  trail: CurvePoint[],
+  vp: Viewport,
+  w: number,
+  h: number,
+  color: string = "rgba(6, 214, 160, 1)",
+) {
   if (trail.length < 2) return;
 
+  // Parse color to create alpha variants
+  const lineColor = color.replace("1)", "0.35)").replace("rgb", "rgba");
+  const dotBaseAlpha = 0.3;
+
   // Trail line
-  ctx.strokeStyle = "rgba(6, 214, 160, 0.3)";
+  ctx.strokeStyle = lineColor;
   ctx.lineWidth = 1.5;
   ctx.setLineDash([3, 3]);
   ctx.beginPath();
@@ -311,10 +322,10 @@ function drawTrail(ctx: CanvasRenderingContext2D, trail: CurvePoint[], vp: Viewp
   // Trail dots (small, fading)
   for (let i = 0; i < trail.length; i++) {
     const [tx, ty] = toCanvas(trail[i].x, trail[i].y, vp, w, h);
-    const alpha = 0.3 + 0.5 * (i / trail.length);
+    const alpha = dotBaseAlpha + 0.5 * (i / trail.length);
     ctx.beginPath();
     ctx.arc(tx, ty, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(6, 214, 160, ${alpha})`;
+    ctx.fillStyle = color.replace("1)", `${alpha})`);
     ctx.fill();
   }
 }
@@ -441,6 +452,14 @@ export function CurveCanvas({
     // Step visuals (construction lines, trail, extra points)
     const currentStep = steps[currentStepIndex];
 
+    // Multi-color trails (ECDH: Alice + Bob paths)
+    if (currentStep?.trails) {
+      for (const t of currentStep.trails) {
+        drawTrail(ctx, t.points, vp, w, h, t.color);
+      }
+    }
+
+    // Single-color trail (orbit, DLP)
     if (currentStep?.trail) {
       drawTrail(ctx, currentStep.trail, vp, w, h);
     }

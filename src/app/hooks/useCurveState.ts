@@ -58,8 +58,10 @@ export interface StepData {
   verticalX?: number;
   /** Extra labeled points to show at this step */
   points?: LabeledPoint[];
-  /** Trail of points for orbit visualization */
+  /** Single-color trail (orbit, DLP search — rendered in green) */
   trail?: CurvePoint[];
+  /** Multi-color trails (ECDH — Alice amber, Bob coral, shared green) */
+  trails?: { points: CurvePoint[]; color: string; label?: string }[];
 }
 
 type Action =
