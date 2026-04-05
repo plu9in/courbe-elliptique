@@ -12,13 +12,14 @@ interface Props {
 
 function KaTeX({ formula }: { formula: string }) {
   const ref = useRef<HTMLSpanElement>(null);
+  const isMultiline = formula.includes("\\begin{aligned}");
 
   useEffect(() => {
     if (ref.current && formula) {
       try {
         katex.render(formula, ref.current, {
           throwOnError: false,
-          displayMode: false,
+          displayMode: isMultiline,
         });
       } catch {
         if (ref.current) ref.current.textContent = formula;

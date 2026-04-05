@@ -113,12 +113,12 @@ export function ECDHPanel({
     if (!aliceSecret || !bobSecret || !alicePub || !bobPub) return [];
     const a = aliceSecret;
     const b = bobSecret;
+    const pp = curve.p;
+    const mod = (n: number) => ((n % pp) + pp) % pp;
 
-    // We trace a·B step by step (Alice's computation of shared secret)
-    // Split into 3 segments: common, divergent, extra
     const commonLen = Math.min(a, b);
     const maxLen = Math.max(a, b);
-    const totalSteps = a; // Alice computes a·B
+    const totalSteps = a;
 
     const allLandmarks: LabeledPoint[] = [
       { point: G, color: G_LABEL, label: "G" },
@@ -129,43 +129,23 @@ export function ECDHPanel({
     const steps: StepData[] = [];
     for (let k = 1; k <= totalSteps; k++) {
       const partial = buildTrail(curve, bobPub, k);
-      const allPts = partial; // 1·B=B is already the first element
+      const allPts = partial;
       const isLast = k === totalSteps;
+      const current = partial[k - 1];
 
       // Build colored segments
       const paths: GradientPath[] = [];
-
-      // allPts[i] = (i+1)·B. So allPts[0]=1·B, allPts[1]=2·B, etc.
-      // Segment 1: common part (steps 1..min(a,b))
       const commonEnd = Math.min(k, commonLen);
       if (commonEnd >= 1) {
-        paths.push({
-          points: allPts.slice(0, commonEnd),
-          color: COMMON_PATH,
-        });
+        paths.push({ points: allPts.slice(0, commonEnd), color: COMMON_PATH });
       }
-
-      // Segment 2: divergent part (steps min(a,b)+1..max(a,b))
       if (k > commonLen) {
         const divEnd = Math.min(k, maxLen);
-        // Include last common point for line continuity
-        paths.push({
-          points: allPts.slice(Math.max(0, commonLen - 1), divEnd),
-          color: DIVERGE_PATH,
-          startIndex: commonLen + 1,
-        });
+        paths.push({ points: allPts.slice(Math.max(0, commonLen - 1), divEnd), color: DIVERGE_PATH, startIndex: commonLen + 1 });
       }
-
-      // Segment 3: extra steps beyond max(a,b)
       if (k > maxLen) {
-        paths.push({
-          points: allPts.slice(Math.max(0, maxLen - 1), k),
-          color: EXTRA_PATH,
-          startIndex: maxLen + 1,
-        });
+        paths.push({ points: allPts.slice(Math.max(0, maxLen - 1), k), color: EXTRA_PATH, startIndex: maxLen + 1 });
       }
-
-      // End label on the last point of the last segment
       if (isLast && paths.length > 0) {
         const lastPath = paths[paths.length - 1];
         lastPath.endLabel = "S";
@@ -173,11 +153,43 @@ export function ECDHPanel({
         lastPath.endSize = 10;
       }
 
+      // Build detailed modular arithmetic formula
+      let formula: string | undefined;
+      if (k === 1) {
+        formula = `1 \\cdot B = B = (${current.x},\\, ${current.y})`;
+      } else {
+        const prev = partial[k - 2]; // (k-1)·B
+        const B = bobPub;
+        if (k === 2 && prev.x === B.x && prev.y === B.y) {
+          // Doubling: 2·B = B + B (tangent)
+          const s = mod((3 * B.x * B.x + curve.a) * curve.modInverse(2 * B.y));
+          const x3 = mod(s * s - 2 * B.x);
+          const y3 = mod(s * (B.x - x3) - B.y);
+          formula = `\\begin{aligned} &${k}B = ${k-1}B + B = \\text{double}(B) \\\\ &s = (3 \\cdot ${B.x}^2 + ${curve.a}) \\cdot (2 \\cdot ${B.y})^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}} \\\\ &x_R = ${s}^2 - 2 \\cdot ${B.x} \\equiv ${x3} \\!\\!\\!\\pmod{${pp}} \\\\ &y_R = ${s}(${B.x} - ${x3}) - ${B.y} \\equiv ${y3} \\!\\!\\!\\pmod{${pp}} \\end{aligned}`;
+        } else {
+          // Addition: k·B = (k-1)·B + B
+          const dx = mod(B.x - prev.x);
+          const dy = mod(B.y - prev.y);
+          let s: number;
+          try {
+            s = mod(dy * curve.modInverse(dx));
+          } catch {
+            formula = `${k}B = ${k-1}B + B \\quad \\text{(vertical line → O)}`;
+            steps.push({ label: isLast ? `S = ${a}\u00b7B` : `${k}\u00b7B`, explanation: `${k}\u00b7B = (${current.x}, ${current.y})`, formula, gradientPaths: paths, landmarks: allLandmarks });
+            continue;
+          }
+          const x3 = mod(s * s - prev.x - B.x);
+          const y3 = mod(s * (prev.x - x3) - prev.y);
+          formula = `\\begin{aligned} &${k}B = ${k-1}B + B = (${prev.x},${prev.y}) + (${B.x},${B.y}) \\\\ &s = (${B.y} - ${prev.y}) \\cdot (${B.x} - ${prev.x})^{-1} \\equiv ${dy} \\cdot ${dx}^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}} \\\\ &x_R = ${s}^2 - ${prev.x} - ${B.x} \\equiv ${x3} \\!\\!\\!\\pmod{${pp}} \\\\ &y_R = ${s}(${prev.x} - ${x3}) - ${prev.y} \\equiv ${y3} \\!\\!\\!\\pmod{${pp}} \\end{aligned}`;
+        }
+      }
+
       steps.push({
-        label: isLast ? `Shared: S = ${a}\u00b7B` : `${k}\u00b7B`,
+        label: isLast ? `S = ${a}\u00b7B` : `${k}\u00b7B`,
         explanation: isLast
-          ? `S = ${a}\u00b7B = ${a}\u00b7${b}G = ${a * b}G = (${partial[k - 1]?.x}, ${partial[k - 1]?.y})`
-          : `${k}\u00b7B = (${partial[k - 1]?.x}, ${partial[k - 1]?.y})`,
+          ? `S = ${a}\u00b7B = ${a}\u00b7${b}G = ${a * b}G = (${current.x}, ${current.y})`
+          : `${k}\u00b7B = (${current.x}, ${current.y})`,
+        formula,
         gradientPaths: paths,
         landmarks: allLandmarks,
       });

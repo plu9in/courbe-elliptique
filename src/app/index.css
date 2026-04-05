@@ -450,10 +450,12 @@ input[type="number"]:focus {
 .step-panel {
   grid-area: steps;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 12px 24px;
   background: var(--md-sys-color-surface-container);
+  overflow-y: auto;
+  max-height: 200px;
   border-top: 1px solid var(--md-sys-color-outline-variant);
   min-height: 72px;
 }
