@@ -455,8 +455,7 @@ input[type="number"]:focus {
   padding: 10px 20px;
   background: var(--md-sys-color-surface-container);
   border-top: 1px solid var(--md-sys-color-outline-variant);
-  min-height: 48px;
-  max-height: 180px;
+  height: 140px;
   overflow-y: auto;
 }
 
