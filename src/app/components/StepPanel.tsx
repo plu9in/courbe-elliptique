@@ -24,6 +24,20 @@ function KaTeX({ formula }: { formula: string }) {
   return <span ref={ref} className="step-formula" />;
 }
 
+/** Convert _{...} markers to <sub>...</sub> JSX */
+function renderSub(text: string): JSX.Element {
+  const parts = text.split(/(_\{[^}]+\})/);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const m = part.match(/^_\{(.+)\}$/);
+        if (m) return <sub key={i}>{m[1]}</sub>;
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 function ComputationTable({ rows }: { rows: ComputationRow[] }) {
   return (
     <table className="comp-table">
@@ -40,10 +54,10 @@ function ComputationTable({ rows }: { rows: ComputationRow[] }) {
         {rows.map((row, i) => (
           <tr key={i}>
             <td className="comp-cell-label">{row.label}</td>
-            <td className="comp-cell-formula">{row.description}</td>
-            <td className="comp-cell-subst">{row.substitution}</td>
-            <td className="comp-cell-mid">{row.intermediate ?? ""}</td>
-            <td className="comp-cell-result">{row.result}</td>
+            <td className="comp-cell-formula">{renderSub(row.description)}</td>
+            <td className="comp-cell-subst">{renderSub(row.substitution)}</td>
+            <td className="comp-cell-mid">{renderSub(row.intermediate ?? "")}</td>
+            <td className="comp-cell-result">{renderSub(row.result)}</td>
           </tr>
         ))}
       </tbody>

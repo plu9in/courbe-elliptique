@@ -69,6 +69,11 @@ export function ECDHPanel({
   function computeStep(k: number, base: CurvePoint, baseName: string, prevName: string, trail: CurvePoint[]): { header: string; computation?: ComputationRow[] } {
     const pp = curve.p;
     const mod = (n: number) => ((n % pp) + pp) % pp;
+    // Subscript notation using _{...} markers that StepPanel renders as <sub>
+    const xB = `x_{${baseName}}`;
+    const yB = `y_{${baseName}}`;
+    const xP = `x_{${prevName}}`;
+    const yP = `y_{${prevName}}`;
 
     if (k === 1) {
       return { header: `1\u00b7${baseName} = ${baseName} = (${trail[0].x}, ${trail[0].y})` };
@@ -88,21 +93,21 @@ export function ECDHPanel({
         computation: [
           {
             label: "Slope (tangent)",
-            description: `s = (3x\u00b2 + a) / (2y) mod p`,
+            description: `s = (3\u00b7${xB}\u00b2 + a) / (2\u00b7${yB}) mod p`,
             substitution: `= (3\u00b7${base.x}\u00b2 + ${curve.a}) \u00b7 (2\u00b7${base.y})\u207b\u00b9`,
             intermediate: `= ${num} \u00b7 ${twoY}\u207b\u00b9 = ${num} \u00b7 ${twoYInv}`,
             result: `\u2261 ${s} (mod ${pp})`,
           },
           {
             label: "New x",
-            description: `x\u2083 = s\u00b2 \u2212 2\u00b7x mod p`,
+            description: `x\u2083 = s\u00b2 \u2212 2\u00b7${xB} mod p`,
             substitution: `= ${s}\u00b2 \u2212 2\u00b7${base.x}`,
             intermediate: `= ${s * s} \u2212 ${2 * base.x}`,
             result: `\u2261 ${cur.x} (mod ${pp})`,
           },
           {
             label: "New y",
-            description: `y\u2083 = s\u00b7(x \u2212 x\u2083) \u2212 y mod p`,
+            description: `y\u2083 = s\u00b7(${xB} \u2212 x\u2083) \u2212 ${yB} mod p`,
             substitution: `= ${s}\u00b7(${base.x} \u2212 ${cur.x}) \u2212 ${base.y}`,
             intermediate: `= ${s}\u00b7${mod(base.x - cur.x)} \u2212 ${base.y}`,
             result: `\u2261 ${cur.y} (mod ${pp})`,
@@ -122,21 +127,21 @@ export function ECDHPanel({
         computation: [
           {
             label: "Slope (secant)",
-            description: `s = (y${baseName} \u2212 y${prevName}) / (x${baseName} \u2212 x${prevName}) mod p`,
+            description: `s = (${yB} \u2212 ${yP}) / (${xB} \u2212 ${xP}) mod p`,
             substitution: `= (${base.y} \u2212 ${prev.y}) \u00b7 (${base.x} \u2212 ${prev.x})\u207b\u00b9`,
             intermediate: `= ${dy} \u00b7 ${dx}\u207b\u00b9 = ${dy} \u00b7 ${dxInv}`,
             result: `\u2261 ${s} (mod ${pp})`,
           },
           {
             label: "New x",
-            description: `x\u2083 = s\u00b2 \u2212 x${prevName} \u2212 x${baseName} mod p`,
+            description: `x\u2083 = s\u00b2 \u2212 ${xP} \u2212 ${xB} mod p`,
             substitution: `= ${s}\u00b2 \u2212 ${prev.x} \u2212 ${base.x}`,
             intermediate: `= ${s * s} \u2212 ${prev.x + base.x}`,
             result: `\u2261 ${cur.x} (mod ${pp})`,
           },
           {
             label: "New y",
-            description: `y\u2083 = s\u00b7(x${prevName} \u2212 x\u2083) \u2212 y${prevName} mod p`,
+            description: `y\u2083 = s\u00b7(${xP} \u2212 x\u2083) \u2212 ${yP} mod p`,
             substitution: `= ${s}\u00b7(${prev.x} \u2212 ${cur.x}) \u2212 ${prev.y}`,
             intermediate: `= ${s}\u00b7${mod(prev.x - cur.x)} \u2212 ${prev.y}`,
             result: `\u2261 ${cur.y} (mod ${pp})`,
