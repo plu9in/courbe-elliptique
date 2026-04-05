@@ -74,13 +74,27 @@ export function ECDHPanel({
     const cur = trail[k - 1];
     if (k === 2 && prev.x === base.x && prev.y === base.y) {
       const s = mod((3 * base.x * base.x + curve.a) * curve.modInverse(2 * base.y));
-      return `\\begin{aligned} &${k}${baseName} = \\text{double}(${baseName}) \\quad s \\equiv (3{\\cdot}${base.x}^2{+}${curve.a}){\\cdot}(2{\\cdot}${base.y})^{-1} \\equiv ${s} \\\\ &x_R \\equiv ${s}^2 {-} 2{\\cdot}${base.x} \\equiv ${cur.x} \\quad y_R \\equiv ${s}(${base.x}{-}${cur.x}){-}${base.y} \\equiv ${cur.y} \\pmod{${pp}} \\end{aligned}`;
+      return [
+        `\\begin{aligned}`,
+        `&${k}${baseName} = \\text{double}(${baseName})`,
+        `\\\\ &s \\equiv (3 \\cdot ${base.x}^2 + ${curve.a}) \\cdot (2 \\cdot ${base.y})^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}}`,
+        `\\\\ &x_R \\equiv ${s}^2 - 2 \\cdot ${base.x} \\equiv ${cur.x} \\!\\!\\!\\pmod{${pp}}`,
+        `\\\\ &y_R \\equiv ${s} \\cdot (${base.x} - ${cur.x}) - ${base.y} \\equiv ${cur.y} \\!\\!\\!\\pmod{${pp}}`,
+        `\\end{aligned}`,
+      ].join(" ");
     }
     const dx = mod(base.x - prev.x);
     const dy = mod(base.y - prev.y);
     try {
       const s = mod(dy * curve.modInverse(dx));
-      return `\\begin{aligned} &${k}${baseName} = (${prev.x},${prev.y}) + (${base.x},${base.y}) \\quad s \\equiv ${dy}{\\cdot}${dx}^{-1} \\equiv ${s} \\\\ &x_R \\equiv ${s}^2{-}${prev.x}{-}${base.x} \\equiv ${cur.x} \\quad y_R \\equiv ${s}(${prev.x}{-}${cur.x}){-}${prev.y} \\equiv ${cur.y} \\pmod{${pp}} \\end{aligned}`;
+      return [
+        `\\begin{aligned}`,
+        `&${k}${baseName} = (${prev.x},${prev.y}) + (${base.x},${base.y})`,
+        `\\\\ &s \\equiv (${base.y} - ${prev.y}) \\cdot (${base.x} - ${prev.x})^{-1} \\equiv ${dy} \\cdot ${dx}^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}}`,
+        `\\\\ &x_R \\equiv ${s}^2 - ${prev.x} - ${base.x} \\equiv ${cur.x} \\!\\!\\!\\pmod{${pp}}`,
+        `\\\\ &y_R \\equiv ${s} \\cdot (${prev.x} - ${cur.x}) - ${prev.y} \\equiv ${cur.y} \\!\\!\\!\\pmod{${pp}}`,
+        `\\end{aligned}`,
+      ].join(" ");
     } catch { return undefined; }
   }
 
