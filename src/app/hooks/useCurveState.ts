@@ -232,7 +232,7 @@ export function useCurveState() {
           points: rPrime ? [{ point: rPrime, color: "#A78BFA", label: "R'" }] : [],
         },
         {
-          label: "Reflect: R = (x_R', −y_R' mod p)",
+          label: "Reflect: R = (x\u2083, y\u2083)",
           explanation: result ? `R = P + Q = (${result.x}, ${result.y})` : "R = O (point at infinity)",
           modularLine: mLine,
           verticalX: result ? result.x : undefined,
@@ -311,7 +311,7 @@ export function useCurveState() {
           points: [{ point: rPrime, color: "#A78BFA", label: "R'" }],
         },
         {
-          label: "Reflect: 2P = (x_R', −y_R' mod p)",
+          label: "Reflect: 2P = (x\u2083, y\u2083)",
           explanation: `2P = (${result.x}, ${result.y})`,
           modularLine: mLine,
           verticalX: result.x,
@@ -390,17 +390,24 @@ export function useCurveState() {
 
   const computeScalar = useCallback(() => {
     if (!state.selectedP || state.mode === "real") return;
-    const result = finiteCurve.scalarMultiply(state.selectedP, state.scalarN);
-    const steps: StepData[] = [];
+    const n = state.scalarN;
+    const result = finiteCurve.scalarMultiply(state.selectedP, n);
+    const fullTrail: CurvePoint[] = [];
     let current: CurvePoint | null = state.selectedP;
-    for (let i = 2; i <= state.scalarN && current; i++) {
-      current = finiteCurve.addPoints(current, state.selectedP);
-      steps.push({
-        label: `${i}P`,
-        explanation: current ? `${i}P = (${current.x}, ${current.y})` : `${i}P = O`,
-        highlightPoint: current ?? undefined,
-      });
+    for (let i = 1; i <= n && current; i++) {
+      fullTrail.push(current);
+      if (i < n) current = finiteCurve.addPoints(current, state.selectedP);
     }
+    const steps: StepData[] = fullTrail.map((pt, i) => {
+      const k = i + 1;
+      const isLast = k === n;
+      return {
+        label: `${k}P`,
+        explanation: `${k}P = (${pt.x}, ${pt.y})`,
+        trail: fullTrail.slice(0, i + 1),
+        points: [{ point: pt, color: isLast ? "#06D6A0" : "#A78BFA", label: isLast ? `${n}P` : `${k}P` }],
+      };
+    });
     dispatch({ type: "SET_RESULT", result, steps });
   }, [state.selectedP, state.scalarN, state.mode, finiteCurve]);
 
