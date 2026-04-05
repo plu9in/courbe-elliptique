@@ -87,6 +87,16 @@ export function App() {
         ecdhB={state.ecdhB}
         onSetEcdhA={(v) => dispatch({ type: "SET_ECDH_A", value: v })}
         onSetEcdhB={(v) => dispatch({ type: "SET_ECDH_B", value: v })}
+        finiteCurve={finiteCurve}
+        ecdhPhase={state.ecdhPhase}
+        ecdhAliceSecret={state.ecdhAliceSecret}
+        ecdhBobSecret={state.ecdhBobSecret}
+        onStartEcdh={() => dispatch({ type: "START_ECDH_INTERACTIVE" })}
+        onSetAliceSecret={(v) => dispatch({ type: "SET_ALICE_SECRET", value: v })}
+        onSetBobSecret={(v) => dispatch({ type: "SET_BOB_SECRET", value: v })}
+        onEcdhAdvance={() => dispatch({ type: "ECDH_ADVANCE" })}
+        onEcdhReset={() => dispatch({ type: "ECDH_RESET" })}
+        onSetResultDirect={(result, steps) => dispatch({ type: "SET_RESULT", result, steps })}
         onSetScalar={(n) => dispatch({ type: "SET_SCALAR", n })}
         onSelectPreset={(preset) => dispatch({
           type: "LOAD_PRESET",

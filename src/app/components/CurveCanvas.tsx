@@ -108,6 +108,7 @@ function drawFiniteFieldPoints(ctx: CanvasRenderingContext2D, curve: FiniteField
   const points = curve.computeAllPoints();
   const radius = Math.max(2, Math.min(5, w / p / 3));
 
+  const showLabels = p <= 13;
   for (const pt of points) {
     const [px, py] = toCanvas(pt.x, pt.y, vp, w, h);
     // Glow
@@ -120,6 +121,13 @@ function drawFiniteFieldPoints(ctx: CanvasRenderingContext2D, curve: FiniteField
     ctx.arc(px, py, radius, 0, Math.PI * 2);
     ctx.fillStyle = "rgba(125, 211, 192, 0.75)";
     ctx.fill();
+    // Coordinate label for small primes
+    if (showLabels) {
+      ctx.fillStyle = "rgba(125, 211, 192, 0.5)";
+      ctx.font = "9px 'Fira Code', monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(`${pt.x},${pt.y}`, px, py - radius - 4);
+    }
   }
 
   // Point at infinity
@@ -373,8 +381,27 @@ export function CurveCanvas({
       const pad = Math.max(1, p * 0.06);
       return { xMin: -pad, xMax: p - 1 + pad, yMin: -pad, yMax: p - 1 + pad };
     }
-    return { xMin: -6, xMax: 6, yMin: -6, yMax: 6 };
-  }, [mode, p]);
+    // Auto-zoom for real curves: find x range where curve exists
+    const a = realCurve.a, b = realCurve.b;
+    // For y²=x³+ax+b, find approximate x range where f(x) >= 0
+    let xLo = -3, xHi = 3;
+    for (let x = -20; x <= 20; x += 0.5) {
+      if (realCurve.evaluateAt(x) >= 0) {
+        xLo = Math.min(xLo, x - 1);
+        xHi = Math.max(xHi, x + 1);
+      }
+    }
+    // Include selected points and result
+    for (const pt of [selectedP, selectedQ, result]) {
+      if (pt) {
+        xLo = Math.min(xLo, pt.x - 1);
+        xHi = Math.max(xHi, pt.x + 1);
+      }
+    }
+    const yRange = Math.max(Math.abs(xLo), Math.abs(xHi), 4);
+    const pad = 1.5;
+    return { xMin: xLo - pad, xMax: xHi + pad, yMin: -yRange - pad, yMax: yRange + pad };
+  }, [mode, p, realCurve, selectedP, selectedQ, result]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
@@ -454,7 +481,28 @@ export function CurveCanvas({
       : `y\u00B2 \u2261 x\u00B3 ${finiteCurve.a >= 0 ? "+" : ""}${finiteCurve.a}x ${finiteCurve.b >= 0 ? "+" : ""}${finiteCurve.b} (mod ${p})`;
     ctx.fillText(eq, 12, h - 12);
 
-  }, [mode, realCurve, finiteCurve, p, isSingular, isPrimeValid, selectedP, selectedQ, steps, currentStepIndex, getViewport]);
+    // Singular overlay
+    if (isSingular && mode === "real") {
+      ctx.fillStyle = "rgba(255, 180, 171, 0.7)";
+      ctx.font = "bold 16px 'Source Sans 3', sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Singular curve (\u0394 = 0)", w / 2, h / 2 - 10);
+      ctx.font = "13px 'Fira Code', monospace";
+      ctx.fillStyle = "rgba(255, 180, 171, 0.5)";
+      ctx.fillText("4a\u00B3 + 27b\u00B2 = 0 \u2014 not a valid elliptic curve", w / 2, h / 2 + 14);
+    }
+
+    // Topology label for real curves (1 or 2 connected components)
+    if (mode === "real" && !isSingular) {
+      const disc = 4 * realCurve.a * realCurve.a * realCurve.a + 27 * realCurve.b * realCurve.b;
+      const components = disc < 0 ? 2 : 1;
+      ctx.fillStyle = "rgba(125, 211, 192, 0.35)";
+      ctx.font = "11px 'Source Sans 3', sans-serif";
+      ctx.textAlign = "right";
+      ctx.fillText(`${components} connected component${components > 1 ? "s" : ""}`, w - 12, h - 12);
+    }
+
+  }, [mode, realCurve, finiteCurve, p, isSingular, isPrimeValid, selectedP, selectedQ, result, steps, currentStepIndex, getViewport]);
 
   useEffect(() => {
     const render = () => {

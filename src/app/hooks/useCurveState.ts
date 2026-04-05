@@ -5,6 +5,8 @@ import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoi
 
 export type FieldMode = "real" | "finite" | "zk";
 
+export type ECDHPhase = "idle" | "choose-curve" | "alice-secret" | "alice-sends" | "bob-secret" | "bob-sends" | "shared" | "done";
+
 interface CurveState {
   mode: FieldMode;
   a: number;
@@ -14,6 +16,9 @@ interface CurveState {
   selectedQ: CurvePoint | null;
   ecdhA: number;
   ecdhB: number;
+  ecdhPhase: ECDHPhase;
+  ecdhAliceSecret: number | null;
+  ecdhBobSecret: number | null;
   result: CurvePoint | null;
   steps: StepData[];
   currentStepIndex: number;
@@ -70,6 +75,11 @@ type Action =
   | { type: "SKIP_TO_END" }
   | { type: "SET_SCALAR"; n: number }
   | { type: "SET_ECDH_A"; value: number }
+  | { type: "START_ECDH_INTERACTIVE" }
+  | { type: "SET_ALICE_SECRET"; value: number }
+  | { type: "SET_BOB_SECRET"; value: number }
+  | { type: "ECDH_ADVANCE" }
+  | { type: "ECDH_RESET" }
   | { type: "SET_ECDH_B"; value: number }
   | { type: "LOAD_PRESET"; a: number; b: number; p: number; presetId: string };
 
@@ -115,6 +125,21 @@ function reducer(state: CurveState, action: Action): CurveState {
       return { ...state, ecdhA: action.value };
     case "SET_ECDH_B":
       return { ...state, ecdhB: action.value };
+    case "START_ECDH_INTERACTIVE":
+      return { ...state, ecdhPhase: "alice-secret", ecdhAliceSecret: null, ecdhBobSecret: null, result: null, steps: [], currentStepIndex: 0 };
+    case "SET_ALICE_SECRET":
+      return { ...state, ecdhAliceSecret: action.value };
+    case "SET_BOB_SECRET":
+      return { ...state, ecdhBobSecret: action.value };
+    case "ECDH_ADVANCE": {
+      const nextPhases: Record<ECDHPhase, ECDHPhase> = {
+        "idle": "idle", "choose-curve": "alice-secret", "alice-secret": "alice-sends",
+        "alice-sends": "bob-secret", "bob-secret": "bob-sends", "bob-sends": "shared", "shared": "done", "done": "done",
+      };
+      return { ...state, ecdhPhase: nextPhases[state.ecdhPhase] };
+    }
+    case "ECDH_RESET":
+      return { ...state, ecdhPhase: "idle", ecdhAliceSecret: null, ecdhBobSecret: null };
     default:
       return state;
   }
@@ -133,6 +158,9 @@ const initialState: CurveState = {
   scalarN: 2,
   ecdhA: 7,
   ecdhB: 11,
+  ecdhPhase: "idle" as ECDHPhase,
+  ecdhAliceSecret: null,
+  ecdhBobSecret: null,
   activePresetId: null,
 };
 

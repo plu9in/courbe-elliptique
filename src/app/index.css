@@ -543,6 +543,68 @@ input[type="number"]:focus {
   color: var(--md-sys-color-error);
 }
 
+/* ===== ECDH Interactive Panel ===== */
+
+.ecdh-phase-label {
+  font-family: var(--md-sys-typescale-body-font);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: var(--md-sys-shape-corner-small);
+  margin-bottom: 4px;
+}
+
+.ecdh-phase-label.alice {
+  background: rgba(255, 209, 102, 0.12);
+  color: #FFD166;
+  border-left: 3px solid #FFD166;
+}
+
+.ecdh-phase-label.bob {
+  background: rgba(255, 123, 107, 0.12);
+  color: #FF7B6B;
+  border-left: 3px solid #FF7B6B;
+}
+
+.ecdh-phase-label.shared {
+  background: rgba(6, 214, 160, 0.12);
+  color: #06D6A0;
+  border-left: 3px solid #06D6A0;
+}
+
+.ecdh-error {
+  font-size: 12px;
+  color: var(--md-sys-color-error);
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.ecdh-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.ecdh-progress-dot {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--md-sys-color-outline-variant);
+  transition: background 0.3s ease;
+}
+
+.ecdh-progress-dot.active.alice {
+  background: #FFD166;
+}
+
+.ecdh-progress-dot.active.bob {
+  background: #FF7B6B;
+}
+
+.ecdh-progress-dot.active.shared {
+  background: #06D6A0;
+}
+
 /* ===== Scrollbar ===== */
 
 ::-webkit-scrollbar {

@@ -1,7 +1,9 @@
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
-import type { FieldMode } from "../hooks/useCurveState.js";
+import type { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
+import type { FieldMode, ECDHPhase, StepData } from "../hooks/useCurveState.js";
 import { CryptoPresets } from "./CryptoPresets.js";
 import { CollapsibleCard } from "./CollapsibleCard.js";
+import { ECDHPanel } from "./ECDHPanel.js";
 import type { CryptoPreset } from "../data/cryptoPresets.js";
 
 interface Props {
@@ -38,6 +40,16 @@ interface Props {
   ecdhB: number;
   onSetEcdhA: (v: number) => void;
   onSetEcdhB: (v: number) => void;
+  finiteCurve: FiniteFieldCurve;
+  ecdhPhase: ECDHPhase;
+  ecdhAliceSecret: number | null;
+  ecdhBobSecret: number | null;
+  onStartEcdh: () => void;
+  onSetAliceSecret: (v: number) => void;
+  onSetBobSecret: (v: number) => void;
+  onEcdhAdvance: () => void;
+  onEcdhReset: () => void;
+  onSetResultDirect: (result: CurvePoint | null, steps: StepData[]) => void;
 }
 
 function formatCoord(pt: CurvePoint | null, mode: FieldMode): string {
@@ -128,6 +140,7 @@ export function Sidebar({
   selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
   onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onNonceReuse, onSchnorr, onPedersen, onSetScalar, ecdhA, ecdhB, onSetEcdhA, onSetEcdhB, onSelectPreset,
+  finiteCurve, ecdhPhase, ecdhAliceSecret, ecdhBobSecret, onStartEcdh, onSetAliceSecret, onSetBobSecret, onEcdhAdvance, onEcdhReset, onSetResultDirect,
 }: Props) {
   return (
     <div className="sidebar">
@@ -161,22 +174,33 @@ export function Sidebar({
           </CollapsibleCard>
 
           {mode === "finite" && (
-            <CollapsibleCard title="Exploration & Crypto" defaultOpen={true}>
-              <div className="op-grid">
-                <button className="op-btn" disabled={!selectedP} onClick={onOrbit}>Orbit of P</button>
-                <button className="op-btn" disabled={!selectedP || !selectedQ} onClick={onDLP}>DLP: find n</button>
-                <div style={{ gridColumn: "1 / -1", display: "flex", gap: "6px", alignItems: "center" }}>
-                  <span style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", whiteSpace: "nowrap" }}>Alice</span>
-                  <input type="number" min={1} max={200} value={ecdhA} onChange={(e) => onSetEcdhA(Number(e.target.value))} style={{ width: "48px" }} />
-                  <span style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", whiteSpace: "nowrap" }}>Bob</span>
-                  <input type="number" min={1} max={200} value={ecdhB} onChange={(e) => onSetEcdhB(Number(e.target.value))} style={{ width: "48px" }} />
-                  <button className="op-btn primary" style={{ flex: 1 }} disabled={!selectedP} onClick={onECDH}>ECDH</button>
+            <>
+              <CollapsibleCard title="Exploration & Crypto" defaultOpen={true}>
+                <div className="op-grid">
+                  <button className="op-btn" disabled={!selectedP} onClick={onOrbit}>Orbit of P</button>
+                  <button className="op-btn" disabled={!selectedP || !selectedQ} onClick={onDLP}>DLP: find n</button>
+                  <button className="op-btn primary" disabled={!selectedP} onClick={onECDSA} style={{ gridColumn: "1 / -1" }}>ECDSA Sign &amp; Verify</button>
+                  <button className="op-btn" disabled={!selectedP} onClick={onNonceReuse} style={{ gridColumn: "1 / -1", color: "var(--md-sys-color-error)" }}>ECDSA Nonce Reuse Attack</button>
+                  <button className="op-btn" disabled={!selectedP} onClick={onDoubleAndAdd} style={{ gridColumn: "1 / -1" }}>Double-and-Add ({scalarN}P)</button>
                 </div>
-                <button className="op-btn primary" disabled={!selectedP} onClick={onECDSA} style={{ gridColumn: "1 / -1" }}>ECDSA Sign &amp; Verify</button>
-                <button className="op-btn" disabled={!selectedP} onClick={onNonceReuse} style={{ gridColumn: "1 / -1", color: "var(--md-sys-color-error)" }}>ECDSA Nonce Reuse Attack</button>
-                <button className="op-btn" disabled={!selectedP} onClick={onDoubleAndAdd} style={{ gridColumn: "1 / -1" }}>Double-and-Add ({scalarN}P)</button>
-              </div>
-            </CollapsibleCard>
+              </CollapsibleCard>
+
+              <CollapsibleCard title="Alice & Bob Key Exchange" defaultOpen={false}>
+                <ECDHPanel
+                  basePoint={selectedP}
+                  curve={finiteCurve}
+                  phase={ecdhPhase}
+                  aliceSecret={ecdhAliceSecret}
+                  bobSecret={ecdhBobSecret}
+                  onStart={onStartEcdh}
+                  onSetAliceSecret={onSetAliceSecret}
+                  onSetBobSecret={onSetBobSecret}
+                  onAdvance={onEcdhAdvance}
+                  onReset={onEcdhReset}
+                  onSetResult={onSetResultDirect}
+                />
+              </CollapsibleCard>
+            </>
           )}
         </>
       )}
