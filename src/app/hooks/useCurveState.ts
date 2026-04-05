@@ -458,6 +458,125 @@ export function useCurveState() {
     dispatch({ type: "SET_RESULT", result, steps });
   }, [state.selectedP, state.scalarN, state.mode, finiteCurve]);
 
+  const computeSchnorr = useCallback(() => {
+    if (!state.selectedP || state.mode !== "finite") return;
+    const g = state.selectedP;
+    const secret = 7;
+    const nonce = 5;
+    const challenge = 3;
+    const order = finiteCurve.pointOrder(g);
+    const pubQ = finiteCurve.scalarMultiply(g, secret)!;
+    const R = finiteCurve.schnorrCommit(g, nonce)!;
+    const s = finiteCurve.schnorrRespond(nonce, challenge, secret, order);
+    const verif = finiteCurve.schnorrVerify(g, pubQ, R, challenge, s);
+
+    const steps: StepData[] = [
+      {
+        label: "Setup",
+        explanation: `Prover knows secret x = ${secret}. Public key Q = ${secret}G = (${pubQ.x}, ${pubQ.y})`,
+        formula: `Q = x \\cdot G = ${secret} \\cdot G`,
+        points: [{ point: pubQ, color: "#FFD166", label: "Q = xG" }],
+      },
+      {
+        label: "1. Commit",
+        explanation: `Prover picks random nonce r = ${nonce}, computes R = rG = (${R.x}, ${R.y}), sends R`,
+        formula: `R = r \\cdot G = ${nonce} \\cdot G`,
+        points: [{ point: pubQ, color: "#FFD166", label: "Q" }, { point: R, color: "#A78BFA", label: "R = rG" }],
+      },
+      {
+        label: "2. Challenge",
+        explanation: `Verifier sends random challenge c = ${challenge}`,
+        formula: `c = ${challenge} \\quad \\text{(random)}`,
+        points: [{ point: pubQ, color: "#FFD166", label: "Q" }, { point: R, color: "#A78BFA", label: "R" }],
+      },
+      {
+        label: "3. Response",
+        explanation: `Prover computes s = r + c\u00b7x mod ${order} = ${nonce} + ${challenge}\u00d7${secret} mod ${order} = ${s}`,
+        formula: `s = r + c \\cdot x = ${nonce} + ${challenge} \\times ${secret} \\equiv ${s} \\pmod{${order}}`,
+        points: [{ point: pubQ, color: "#FFD166", label: "Q" }, { point: R, color: "#A78BFA", label: "R" }],
+      },
+      {
+        label: "4. Verify",
+        explanation: verif.lhs && verif.rhs
+          ? `sG = (${verif.lhs.x}, ${verif.lhs.y}) vs R + cQ = (${verif.rhs.x}, ${verif.rhs.y}) ${verif.valid ? "\u2714 Equal!" : "\u2718 Not equal"}`
+          : "Computation error",
+        formula: `s \\cdot G \\stackrel{?}{=} R + c \\cdot Q`,
+        points: verif.lhs ? [
+          { point: verif.lhs, color: verif.valid ? "#06D6A0" : "#FF7B6B", label: "sG" },
+          { point: R, color: "#A78BFA", label: "R" },
+          { point: pubQ, color: "#FFD166", label: "Q" },
+        ] : [],
+      },
+      {
+        label: verif.valid ? "Zero-Knowledge!" : "FAILED",
+        explanation: verif.valid
+          ? "Verifier is convinced Prover knows x, but learned NOTHING about x. Only R, c, s were exchanged \u2014 none reveal x."
+          : "Verification failed \u2014 prover does not know the secret.",
+        formula: verif.valid
+          ? `\\text{Revealed: } R, c, s \\quad \\text{Secret: } x = ? \\quad \\text{ZK} \\checkmark`
+          : `\\text{sG} \\neq R + cQ`,
+      },
+    ];
+    dispatch({ type: "SET_RESULT", result: verif.lhs, steps });
+  }, [state.selectedP, state.mode, finiteCurve]);
+
+  const computePedersen = useCallback(() => {
+    if (!state.selectedP || !state.selectedQ || state.mode !== "finite") return;
+    const g = state.selectedP;
+    const h = state.selectedQ;
+    const value = 5;
+    const blinding = 11;
+    const vG = finiteCurve.scalarMultiply(g, value);
+    const rH = finiteCurve.scalarMultiply(h, blinding);
+    const C = finiteCurve.pedersenCommit(g, h, value, blinding);
+
+    const steps: StepData[] = [
+      {
+        label: "Setup: two generators",
+        explanation: `G = (${g.x}, ${g.y}), H = (${h.x}, ${h.y}). Nobody knows the discrete log of H w.r.t. G.`,
+        points: [
+          { point: g, color: "#FFD166", label: "G" },
+          { point: h, color: "#FF7B6B", label: "H" },
+        ],
+      },
+      {
+        label: "Choose secret value & blinding",
+        explanation: `Value v = ${value} (the secret to commit), Blinding factor r = ${blinding} (randomness for hiding)`,
+        formula: `v = ${value}, \\quad r = ${blinding}`,
+      },
+      {
+        label: "Compute commitment",
+        explanation: vG && rH
+          ? `C = ${value}G + ${blinding}H = (${vG.x}, ${vG.y}) + (${rH.x}, ${rH.y})${C ? ` = (${C.x}, ${C.y})` : " = O"}`
+          : "Computation error",
+        formula: `C = v \\cdot G + r \\cdot H = ${value}G + ${blinding}H`,
+        points: [
+          ...(vG ? [{ point: vG, color: "#FFD166", label: `${value}G` }] : []),
+          ...(rH ? [{ point: rH, color: "#FF7B6B", label: `${blinding}H` }] : []),
+          ...(C ? [{ point: C, color: "#A78BFA", label: "C" }] : []),
+        ],
+      },
+      {
+        label: "Commitment is hiding",
+        explanation: `C = (${C?.x}, ${C?.y}) reveals nothing about v = ${value}. An observer sees only C \u2014 they can't determine v without knowing r.`,
+        formula: `\\text{Given only } C, \\text{ finding } v \\text{ requires solving DLP}`,
+        points: C ? [{ point: C, color: "#A78BFA", label: "C (public)" }] : [],
+      },
+      {
+        label: "Opening: reveal v and r",
+        explanation: `Prover reveals v = ${value}, r = ${blinding}. Verifier checks: ${value}G + ${blinding}H == C?`,
+        formula: `${value} \\cdot G + ${blinding} \\cdot H \\stackrel{?}{=} C`,
+        points: C ? [{ point: C, color: "#06D6A0", label: "C \u2714" }] : [],
+      },
+      {
+        label: "Binding property",
+        explanation: "The prover cannot open C to a different value v'. Doing so would require finding r' such that v'G + r'H = C, which means solving the DLP for H w.r.t. G.",
+        formula: `\\text{Cannot find } (v', r') \\neq (v, r) \\text{ s.t. } v'G + r'H = C`,
+      },
+    ];
+    dispatch({ type: "SET_RESULT", result: C, steps });
+  }, [state.selectedP, state.selectedQ, state.mode, finiteCurve]);
+
   return {
     state,
     dispatch,
@@ -474,5 +593,7 @@ export function useCurveState() {
     computeECDH,
     computeECDSA,
     computeDoubleAndAdd,
+    computeSchnorr,
+    computePedersen,
   };
 }

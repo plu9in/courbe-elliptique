@@ -136,6 +136,68 @@ ECDSA is **not encryption** — it's a **digital signature**. It proves that a m
 
 The app demonstrates ECDSA in 7 steps: key pair → hash → nonce → signature (r, s) → verification.
 
+### Zero-Knowledge Proofs (ZK Proofs)
+
+A zero-knowledge proof lets you **prove you know a secret without revealing it**. This sounds paradoxical, but elliptic curves make it possible.
+
+#### Schnorr Protocol — "I know x, but I won't tell you"
+
+The Schnorr protocol proves knowledge of a private key x (where Q = xG is public) in 4 moves:
+
+```
+Public: curve, generator G, public key Q = xG
+Secret: x (only the Prover knows this)
+
+    Prover                          Verifier
+      │                                │
+      │  1. Pick random nonce r        │
+      │     Compute R = rG             │
+      │  ──────── R ─────────────────► │
+      │                                │
+      │  ◄──────── c ─────────────────  │  2. Send random challenge c
+      │                                │
+      │  3. Compute s = r + c·x mod n  │
+      │  ──────── s ─────────────────► │
+      │                                │  4. Check: sG == R + cQ
+      │                                │     If yes → convinced!
+```
+
+**Why it's zero-knowledge**: the Verifier only sees R, c, and s. None of these reveal x:
+- R is random (masked by nonce r)
+- s = r + c·x mixes the secret with the random nonce — without r, you can't extract x
+- The Verifier could have generated (R, c, s) themselves by simulation — so the transcript carries no information about x
+
+**In the app**: select a base point G, click **Schnorr Protocol**. The 6-step walkthrough shows the commit → challenge → response → verification cycle.
+
+#### Pedersen Commitment — "I'll tell you later, and I can't change my mind"
+
+A Pedersen commitment lets you **lock in a secret value** without revealing it, then open it later.
+
+```
+Setup: two generators G and H (nobody knows the discrete log of H w.r.t. G)
+
+Commit:   C = v·G + r·H     (v = secret value, r = random blinding factor)
+                              C is published — it hides v completely
+
+Opening:  reveal v and r     → Verifier checks v·G + r·H == C
+```
+
+Two key properties:
+- **Hiding**: C reveals nothing about v (the blinding factor r makes C uniformly random)
+- **Binding**: the committer can't change their mind — opening to a different v' would require finding r' such that v'G + r'H = C, which means solving the DLP for H w.r.t. G
+
+Pedersen commitments are the building block of modern ZK systems: Bulletproofs, Groth16, and Zcash all use them internally.
+
+**In the app**: select P (as G) and Q (as H), click **Pedersen Commitment**. The 6-step walkthrough shows commit → hiding → opening → binding.
+
+#### Where ZK meets the curves we've built
+
+Everything connects:
+- **Schnorr** uses scalar multiplication (nP) and point addition (R + cQ) — the same operations from the Group Operations panel
+- **Pedersen** uses two independent scalar multiplications and addition — same math, different context
+- The **DLP hardness** is what makes both protocols secure: you can't cheat without solving a discrete log
+- The **BN254** and **BLS12-381** presets are the exact curves used in Ethereum's ZK rollups (zkSync, Scroll, Polygon zkEVM)
+
 ### The Discrete Logarithm Problem (DLP)
 
 The **DLP: find n** button demonstrates the core security assumption:
@@ -190,6 +252,10 @@ Each step displays the corresponding mathematical formula rendered with KaTeX.
 - **ECDH Key Exchange** — step-by-step Diffie-Hellman: Alice(a=7) and Bob(b=11) independently derive the same shared secret
 - **ECDSA Sign & Verify** — 7-step walkthrough: key pair → hash → nonce → signature → verification
 - **Double-and-Add** — efficient scalar multiplication showing the binary decomposition of n
+
+### Zero-Knowledge Proofs
+- **Schnorr Protocol** — 6-step interactive proof of knowledge: commit (R=rG) → challenge (c) → response (s=r+cx) → verify (sG = R+cQ). Proves you know the private key without revealing it.
+- **Pedersen Commitment** — 6-step commitment scheme: commit (C=vG+rH) → hiding property → opening → binding property. The building block of Bulletproofs, Groth16, and Zcash.
 
 ### Crypto Curve Presets
 
@@ -262,7 +328,7 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 npm test
 ```
 
-75 unit tests covering the domain model (curve arithmetic, group operations, DLP, ECDH, ECDSA).
+79 unit tests covering the domain model (curve arithmetic, group operations, DLP, ECDH, ECDSA, Schnorr, Pedersen).
 
 ### Build for Production
 
@@ -298,7 +364,7 @@ npm run preview
 
 ## Roadmap
 
-- [ ] **Zero-Knowledge Proofs** — planned future extension (the reason finite fields are the primary focus)
+- [x] **Zero-Knowledge Proofs** — Schnorr protocol and Pedersen commitments
 - [ ] **Montgomery & Edwards forms** — native visualization for Curve25519, Ed25519, Jubjub
 - [ ] **Larger primes** — BigInt support for p > 97 with zoom/pan navigation
 

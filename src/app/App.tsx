@@ -20,6 +20,8 @@ export function App() {
     computeECDH,
     computeECDSA,
     computeDoubleAndAdd,
+    computeSchnorr,
+    computePedersen,
   } = useCurveState();
 
   const pointCount = state.mode === "finite" && isPrimeValid
@@ -71,6 +73,8 @@ export function App() {
         onECDH={computeECDH}
         onECDSA={computeECDSA}
         onDoubleAndAdd={computeDoubleAndAdd}
+        onSchnorr={computeSchnorr}
+        onPedersen={computePedersen}
         onSetScalar={(n) => dispatch({ type: "SET_SCALAR", n })}
         onSelectPreset={(preset) => dispatch({
           type: "LOAD_PRESET",

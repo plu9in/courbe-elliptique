@@ -186,6 +186,57 @@ export class FiniteFieldCurve {
     return { result: acc, steps };
   }
 
+  // ===== Zero-Knowledge Proofs =====
+
+  /** Schnorr protocol: Prover commits R = nonce·G */
+  schnorrCommit(g: CurvePoint, nonce: number): CurvePoint | null {
+    return this.scalarMultiply(g, nonce);
+  }
+
+  /** Schnorr protocol: Prover responds s = nonce + challenge·secret (mod order) */
+  schnorrRespond(nonce: number, challenge: number, secret: number, order: number): number {
+    return ((nonce + challenge * secret) % order + order) % order;
+  }
+
+  /** Schnorr protocol: Verifier checks sG == R + cQ */
+  schnorrVerify(
+    g: CurvePoint,
+    publicKey: CurvePoint,
+    commitment: CurvePoint,
+    challenge: number,
+    response: number,
+  ): { valid: boolean; lhs: CurvePoint | null; rhs: CurvePoint | null } {
+    const lhs = this.scalarMultiply(g, response); // sG
+    const cQ = this.scalarMultiply(publicKey, challenge); // cQ
+    const rhs = this.addPoints(commitment, cQ); // R + cQ
+    const valid = lhs !== null && rhs !== null && lhs.x === rhs.x && lhs.y === rhs.y;
+    return { valid, lhs, rhs };
+  }
+
+  /** Pedersen commitment: C = value·G + blinding·H */
+  pedersenCommit(
+    g: CurvePoint,
+    h: CurvePoint,
+    value: number,
+    blinding: number,
+  ): CurvePoint | null {
+    const vG = this.scalarMultiply(g, value);
+    const rH = this.scalarMultiply(h, blinding);
+    return this.addPoints(vG, rH);
+  }
+
+  /** Pedersen verify: check C == value·G + blinding·H */
+  pedersenVerify(
+    g: CurvePoint,
+    h: CurvePoint,
+    commitment: CurvePoint,
+    value: number,
+    blinding: number,
+  ): boolean {
+    const expected = this.pedersenCommit(g, h, value, blinding);
+    return expected !== null && expected.x === commitment.x && expected.y === commitment.y;
+  }
+
   /** Modular inverse of a mod m (for arbitrary modulus, not just this.p) */
   private modInverseOf(a: number, m: number): number {
     const normalized = ((a % m) + m) % m;

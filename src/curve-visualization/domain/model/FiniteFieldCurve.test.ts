@@ -514,4 +514,76 @@ describe("FiniteFieldCurve", () => {
     expect(steps.some((s) => s.op === "double")).toBe(true);
     expect(steps.some((s) => s.op === "add")).toBe(true);
   });
+
+  // ===== Zero-Knowledge Proofs =====
+
+  it("Schnorr protocol: prover convinces verifier without revealing secret", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const secret = 7;
+    const publicKey = curve.scalarMultiply(g, secret)!;
+    const order = curve.pointOrder(g);
+
+    // Step 1: Prover commits with random nonce
+    const nonce = 5;
+    const R = curve.schnorrCommit(g, nonce)!;
+
+    // Step 2: Verifier sends challenge
+    const challenge = 3;
+
+    // Step 3: Prover responds
+    const s = curve.schnorrRespond(nonce, challenge, secret, order);
+
+    // Step 4: Verifier checks sG == R + cQ
+    const result = curve.schnorrVerify(g, publicKey, R, challenge, s);
+
+    expect(result.valid).toBe(true);
+    expect(result.lhs).toEqual(result.rhs);
+  });
+
+  it("Schnorr protocol: verification fails with wrong secret", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const order = curve.pointOrder(g);
+    const realSecret = 7;
+    const fakeSecret = 9;
+    const publicKey = curve.scalarMultiply(g, realSecret)!;
+
+    const nonce = 5;
+    const R = curve.schnorrCommit(g, nonce)!;
+    const challenge = 3;
+
+    // Cheater uses wrong secret
+    const s = curve.schnorrRespond(nonce, challenge, fakeSecret, order);
+    const result = curve.schnorrVerify(g, publicKey, R, challenge, s);
+
+    expect(result.valid).toBe(false);
+  });
+
+  it("Pedersen commitment: can commit and verify opening", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const h = { x: 1, y: 7 }; // Second generator (must not know dlog of H w.r.t. G)
+
+    const value = 5;
+    const blinding = 11;
+
+    const commitment = curve.pedersenCommit(g, h, value, blinding)!;
+
+    expect(commitment).not.toBeNull();
+    expect(curve.pedersenVerify(g, h, commitment, value, blinding)).toBe(true);
+  });
+
+  it("Pedersen commitment: opening with wrong value fails", () => {
+    const curve = new FiniteFieldCurve(1, 1, 23);
+    const g = { x: 0, y: 1 };
+    const h = { x: 1, y: 7 };
+
+    const commitment = curve.pedersenCommit(g, h, 5, 11)!;
+
+    // Try to open with different value
+    expect(curve.pedersenVerify(g, h, commitment, 6, 11)).toBe(false);
+    // Try to open with different blinding
+    expect(curve.pedersenVerify(g, h, commitment, 5, 12)).toBe(false);
+  });
 });

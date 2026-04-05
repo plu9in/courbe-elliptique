@@ -29,6 +29,8 @@ interface Props {
   onECDH: () => void;
   onECDSA: () => void;
   onDoubleAndAdd: () => void;
+  onSchnorr: () => void;
+  onPedersen: () => void;
   onSelectPreset: (preset: CryptoPreset) => void;
   onSetScalar: (n: number) => void;
 }
@@ -43,7 +45,7 @@ export function Sidebar({
   mode, a, b, p, isSingular, isPrimeValid,
   selectedP, selectedQ, result, scalarN, activePresetId,
   onSetA, onSetB, onSetP, onClearSelection,
-  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onSetScalar, onSelectPreset,
+  onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onSchnorr, onPedersen, onSetScalar, onSelectPreset,
 }: Props) {
   const equationStr = mode === "real"
     ? `y\u00B2 = x\u00B3 ${a >= 0 ? "+" : ""}${a}x ${b >= 0 ? "+" : ""}${b}`
@@ -231,6 +233,38 @@ export function Sidebar({
             >
               Double-and-Add ({scalarN}P)
             </button>
+          </div>
+        </CollapsibleCard>
+      )}
+
+      {/* Zero-Knowledge Proofs */}
+      {mode === "finite" && (
+        <CollapsibleCard title="Zero-Knowledge Proofs" defaultOpen={false}>
+          <div style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface-variant)", marginBottom: "10px", lineHeight: "1.5" }}>
+            Prove you know a secret without revealing it.
+          </div>
+          <div className="op-grid">
+            <button
+              className="op-btn"
+              disabled={!selectedP}
+              onClick={onSchnorr}
+              style={{ gridColumn: "1 / -1" }}
+            >
+              Schnorr Protocol
+            </button>
+            <button
+              className="op-btn"
+              disabled={!selectedP || !selectedQ}
+              onClick={onPedersen}
+              style={{ gridColumn: "1 / -1" }}
+            >
+              Pedersen Commitment
+            </button>
+          </div>
+          <div style={{ fontSize: "11px", color: "var(--md-sys-color-on-surface-variant)", marginTop: "8px", lineHeight: "1.5" }}>
+            <strong style={{ color: "var(--md-sys-color-primary)" }}>Schnorr</strong>: Select P (base point). Proves knowledge of x where Q = xP.
+            <br />
+            <strong style={{ color: "var(--md-sys-color-primary)" }}>Pedersen</strong>: Select P and Q (two generators). Commits to a value without revealing it.
           </div>
         </CollapsibleCard>
       )}
