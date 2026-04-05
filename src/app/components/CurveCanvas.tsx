@@ -503,6 +503,50 @@ export function CurveCanvas({
 
   const getViewport = useCallback((): Viewport => {
     if (mode !== "real") {
+      // Collect all interesting points from current step
+      const currentStep = steps[currentStepIndex];
+      const interestPts: CurvePoint[] = [];
+
+      if (currentStep?.gradientPaths) {
+        for (const gp of currentStep.gradientPaths) {
+          interestPts.push(...gp.points);
+        }
+      }
+      if (currentStep?.landmarks) {
+        for (const lm of currentStep.landmarks) {
+          interestPts.push(lm.point);
+        }
+      }
+      if (selectedP) interestPts.push(selectedP);
+      if (selectedQ) interestPts.push(selectedQ);
+      if (result) interestPts.push(result);
+
+      // If we have active points, zoom to fit them with generous padding
+      if (interestPts.length >= 2) {
+        let xLo = Infinity, xHi = -Infinity, yLo = Infinity, yHi = -Infinity;
+        for (const pt of interestPts) {
+          xLo = Math.min(xLo, pt.x);
+          xHi = Math.max(xHi, pt.x);
+          yLo = Math.min(yLo, pt.y);
+          yHi = Math.max(yHi, pt.y);
+        }
+        const dx = Math.max(xHi - xLo, 1);
+        const dy = Math.max(yHi - yLo, 1);
+        const span = Math.max(dx, dy);
+        const pad = Math.max(2, span * 0.35);
+        const cx = (xLo + xHi) / 2;
+        const cy = (yLo + yHi) / 2;
+        const half = span / 2 + pad;
+        // Clamp to [0, p-1] range but allow going outside if needed
+        return {
+          xMin: Math.min(cx - half, -1),
+          xMax: Math.max(cx + half, p),
+          yMin: Math.min(cy - half, -1),
+          yMax: Math.max(cy + half, p),
+        };
+      }
+
+      // Default: show full grid
       const pad = Math.max(1, p * 0.06);
       return { xMin: -pad, xMax: p - 1 + pad, yMin: -pad, yMax: p - 1 + pad };
     }
@@ -526,7 +570,7 @@ export function CurveCanvas({
     const yRange = Math.max(Math.abs(xLo), Math.abs(xHi), 4);
     const pad = 1.5;
     return { xMin: xLo - pad, xMax: xHi + pad, yMin: -yRange - pad, yMax: yRange + pad };
-  }, [mode, p, realCurve, selectedP, selectedQ, result]);
+  }, [mode, p, realCurve, selectedP, selectedQ, result, steps, currentStepIndex]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
