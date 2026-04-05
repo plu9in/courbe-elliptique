@@ -24,7 +24,7 @@ export function App() {
     computePedersen,
   } = useCurveState();
 
-  const pointCount = state.mode === "finite" && isPrimeValid
+  const pointCount = state.mode !== "real" && isPrimeValid
     ? finiteCurve.computeAllPoints().length
     : null;
 
@@ -44,6 +44,12 @@ export function App() {
             onClick={() => dispatch({ type: "SET_MODE", mode: "finite" })}
           >
             Finite Field 𝔽ₚ
+          </button>
+          <button
+            className={state.mode === "zk" ? "active zk" : ""}
+            onClick={() => dispatch({ type: "SET_MODE", mode: "zk" })}
+          >
+            Zero-Knowledge
           </button>
         </div>
       </header>
@@ -108,7 +114,7 @@ export function App() {
         onSkipToEnd={() => dispatch({ type: "SKIP_TO_END" })}
       />
 
-      {state.mode === "finite" && isPrimeValid && pointCount !== null && (
+      {state.mode !== "real" && isPrimeValid && pointCount !== null && (
         <div style={{
           position: "fixed",
           top: "80px",

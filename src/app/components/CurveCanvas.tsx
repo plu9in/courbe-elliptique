@@ -369,7 +369,7 @@ export function CurveCanvas({
   const animFrameRef = useRef<number>(0);
 
   const getViewport = useCallback((): Viewport => {
-    if (mode === "finite") {
+    if (mode !== "real") {
       const pad = Math.max(1, p * 0.06);
       return { xMin: -pad, xMax: p - 1 + pad, yMin: -pad, yMax: p - 1 + pad };
     }
@@ -402,12 +402,12 @@ export function CurveCanvas({
     ctx.fillRect(0, 0, w, h);
 
     // Grid
-    drawGrid(ctx, vp, w, h, mode === "finite");
+    drawGrid(ctx, vp, w, h, mode !== "real");
 
     // Curve
     if (mode === "real" && !isSingular) {
       drawRealCurve(ctx, realCurve, vp, w, h);
-    } else if (mode === "finite" && isPrimeValid) {
+    } else if (mode !== "real" && isPrimeValid) {
       drawFiniteFieldPoints(ctx, finiteCurve, p, vp, w, h);
     }
 
@@ -419,13 +419,13 @@ export function CurveCanvas({
     }
 
     // Modular line (finite field — p discrete dots forming the "line")
-    if (currentStep?.modularLine && mode === "finite" && isPrimeValid) {
+    if (currentStep?.modularLine && mode !== "real" && isPrimeValid) {
       const curvePointSet = new Set(finiteCurve.computeAllPoints().map((pt) => `${pt.x},${pt.y}`));
       drawModularLine(ctx, currentStep.modularLine, curvePointSet, vp, w, h);
     }
 
     // Vertical line in finite field (for inverse / reflection)
-    if (currentStep?.verticalX !== undefined && mode === "finite") {
+    if (currentStep?.verticalX !== undefined && mode !== "real") {
       drawVerticalFiniteField(ctx, currentStep.verticalX, p, vp, w, h);
     }
 

@@ -152,6 +152,11 @@ body {
   color: var(--md-sys-color-on-primary);
 }
 
+.mode-toggle button.active.zk {
+  background: #8B5CF6;
+  color: #FFFFFF;
+}
+
 .mode-toggle button:hover:not(.active) {
   background: rgba(125, 211, 192, 0.08);
 }

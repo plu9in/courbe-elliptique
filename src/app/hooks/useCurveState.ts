@@ -3,7 +3,7 @@ import { EllipticCurve } from "../../curve-visualization/domain/model/EllipticCu
 import { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
 
-export type FieldMode = "real" | "finite";
+export type FieldMode = "real" | "finite" | "zk";
 
 interface CurveState {
   mode: FieldMode;
@@ -130,7 +130,7 @@ export function useCurveState() {
     const p = state.selectedP;
     const q = state.selectedQ;
 
-    if (state.mode === "finite") {
+    if (state.mode !== "real") {
       const result = finiteCurve.addPoints(p, q);
       const mod = (n: number) => ((n % state.p) + state.p) % state.p;
       const s = mod((q.y - p.y) * finiteCurve.modInverse(q.x - p.x));
@@ -207,7 +207,7 @@ export function useCurveState() {
     if (!state.selectedP) return;
     const pt = state.selectedP;
 
-    if (state.mode === "finite") {
+    if (state.mode !== "real") {
       const result = finiteCurve.doublePoint(pt);
       if (!result) {
         dispatch({ type: "SET_RESULT", result: null, steps: [{ label: "2P = O", explanation: `P has y=0, tangent is vertical. 2P = O (identity).` }] });
@@ -285,7 +285,7 @@ export function useCurveState() {
     if (!state.selectedP) return;
     const pt = state.selectedP;
 
-    if (state.mode === "finite") {
+    if (state.mode !== "real") {
       const inv = finiteCurve.inversePoint(pt);
       const steps: StepData[] = [
         {
@@ -314,7 +314,7 @@ export function useCurveState() {
   }, [state.selectedP, state.mode, realCurve, finiteCurve, state.p]);
 
   const computeScalar = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const result = finiteCurve.scalarMultiply(state.selectedP, state.scalarN);
     const steps: StepData[] = [];
     let current: CurvePoint | null = state.selectedP;
@@ -330,7 +330,7 @@ export function useCurveState() {
   }, [state.selectedP, state.scalarN, state.mode, finiteCurve]);
 
   const computeOrbit = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const orbit = finiteCurve.computeOrbit(state.selectedP);
     const order = orbit.length + 1;
     const isGen = finiteCurve.isGenerator(state.selectedP);
@@ -349,7 +349,7 @@ export function useCurveState() {
   }, [state.selectedP, state.mode, finiteCurve]);
 
   const computeDLP = useCallback(() => {
-    if (!state.selectedP || !state.selectedQ || state.mode !== "finite") return;
+    if (!state.selectedP || !state.selectedQ || state.mode === "real") return;
     const base = state.selectedP;
     const target = state.selectedQ;
     const isGen = finiteCurve.isGenerator(base);
@@ -400,7 +400,7 @@ export function useCurveState() {
   }, [state.selectedP, state.selectedQ, state.mode, finiteCurve]);
 
   const computeECDH = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const g = state.selectedP;
     const a = 7, b = 11;
     const pubA = finiteCurve.scalarMultiply(g, a)!;
@@ -419,7 +419,7 @@ export function useCurveState() {
   }, [state.selectedP, state.mode, finiteCurve]);
 
   const computeECDSA = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const g = state.selectedP;
     const d = 7;
     const k = 3;
@@ -443,7 +443,7 @@ export function useCurveState() {
   }, [state.selectedP, state.mode, finiteCurve]);
 
   const computeDoubleAndAdd = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const { result, steps: daSteps } = finiteCurve.doubleAndAdd(state.selectedP, state.scalarN);
     const binary = state.scalarN.toString(2);
     const steps: StepData[] = [
@@ -459,7 +459,7 @@ export function useCurveState() {
   }, [state.selectedP, state.scalarN, state.mode, finiteCurve]);
 
   const computeSchnorr = useCallback(() => {
-    if (!state.selectedP || state.mode !== "finite") return;
+    if (!state.selectedP || state.mode === "real") return;
     const g = state.selectedP;
     const secret = 7;
     const nonce = 5;
@@ -521,7 +521,7 @@ export function useCurveState() {
   }, [state.selectedP, state.mode, finiteCurve]);
 
   const computePedersen = useCallback(() => {
-    if (!state.selectedP || !state.selectedQ || state.mode !== "finite") return;
+    if (!state.selectedP || !state.selectedQ || state.mode === "real") return;
     const g = state.selectedP;
     const h = state.selectedQ;
     const value = 5;
