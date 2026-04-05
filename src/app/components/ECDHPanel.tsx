@@ -75,7 +75,7 @@ export function ECDHPanel({
         label: `Alice: ${k}G`,
         explanation: isLast ? `A = ${a}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
         gradientPaths: [{
-          points: [G, ...partial],
+          points: partial,
           color: ALICE_PATH,
           endLabel: isLast ? "A" : undefined,
           endColor: isLast ? ALICE_END : undefined,
@@ -97,7 +97,7 @@ export function ECDHPanel({
         label: `Bob: ${k}G`,
         explanation: isLast ? `B = ${b}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
         gradientPaths: [{
-          points: [G, ...partial],
+          points: partial,
           color: BOB_PATH,
           endLabel: isLast ? "B" : undefined,
           endColor: isLast ? BOB_END : undefined,
@@ -129,35 +129,37 @@ export function ECDHPanel({
     const steps: StepData[] = [];
     for (let k = 1; k <= totalSteps; k++) {
       const partial = buildTrail(curve, bobPub, k);
-      const allPts = [bobPub, ...partial];
+      const allPts = partial; // 1·B=B is already the first element
       const isLast = k === totalSteps;
 
       // Build colored segments
       const paths: GradientPath[] = [];
 
-      // Segment 1: common part (1..commonLen)
+      // allPts[i] = (i+1)·B. So allPts[0]=1·B, allPts[1]=2·B, etc.
+      // Segment 1: common part (steps 1..min(a,b))
       const commonEnd = Math.min(k, commonLen);
       if (commonEnd >= 1) {
         paths.push({
-          points: allPts.slice(0, commonEnd + 1),
+          points: allPts.slice(0, commonEnd),
           color: COMMON_PATH,
         });
       }
 
-      // Segment 2: divergent part (commonLen+1..maxLen)
+      // Segment 2: divergent part (steps min(a,b)+1..max(a,b))
       if (k > commonLen) {
         const divEnd = Math.min(k, maxLen);
+        // Include last common point for line continuity
         paths.push({
-          points: allPts.slice(commonLen, divEnd + 1),
+          points: allPts.slice(Math.max(0, commonLen - 1), divEnd),
           color: DIVERGE_PATH,
           startIndex: commonLen + 1,
         });
       }
 
-      // Segment 3: extra steps beyond max(a,b) (if a > b, extra steps from b+1..a)
+      // Segment 3: extra steps beyond max(a,b)
       if (k > maxLen) {
         paths.push({
-          points: allPts.slice(maxLen, k + 1),
+          points: allPts.slice(Math.max(0, maxLen - 1), k),
           color: EXTRA_PATH,
           startIndex: maxLen + 1,
         });

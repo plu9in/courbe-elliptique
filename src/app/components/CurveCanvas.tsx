@@ -606,9 +606,10 @@ export function CurveCanvas({
       drawConstructionLines(ctx, currentStep, vp, w, h);
     }
 
-    // Selected points (always visible)
-    if (selectedP) drawLabeledPoint(ctx, selectedP, "#FFD166", "P", vp, w, h);
-    if (selectedQ) drawLabeledPoint(ctx, selectedQ, "#FF7B6B", "Q", vp, w, h);
+    // Selected points (visible unless ECDH landmarks are handling them)
+    const hasLandmarks = currentStep?.landmarks && currentStep.landmarks.length > 0;
+    if (selectedP && !hasLandmarks) drawLabeledPoint(ctx, selectedP, "#FFD166", "P", vp, w, h);
+    if (selectedQ && !hasLandmarks) drawLabeledPoint(ctx, selectedQ, "#FF7B6B", "Q", vp, w, h);
 
     // Step-labeled points
     if (currentStep?.points) {
