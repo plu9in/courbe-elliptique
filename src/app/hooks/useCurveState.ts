@@ -154,7 +154,7 @@ function reducer(state: CurveState, action: Action): CurveState {
       return { ...state, ecdhPhase: nextPhases[state.ecdhPhase] };
     }
     case "ECDH_RESET":
-      return { ...state, ecdhPhase: "idle", ecdhAliceSecret: null, ecdhBobSecret: null };
+      return { ...state, ecdhPhase: "idle", ecdhAliceSecret: null, ecdhBobSecret: null, result: null, steps: [], currentStepIndex: 0 };
     default:
       return state;
   }

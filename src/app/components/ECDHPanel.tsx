@@ -239,6 +239,22 @@ export function ECDHPanel({
         ))}
       </div>
 
+      {/* Persistent secret values once entered */}
+      {(aliceSecret !== null || bobSecret !== null) && (
+        <div style={{ display: "flex", gap: "10px", marginBottom: "8px", fontSize: "12px" }}>
+          {aliceSecret !== null && (
+            <span style={{ color: "#60A5FA", fontFamily: "var(--md-sys-typescale-code-font)" }}>
+              a = {aliceSecret}
+            </span>
+          )}
+          {bobSecret !== null && (
+            <span style={{ color: "#F472B6", fontFamily: "var(--md-sys-typescale-code-font)" }}>
+              b = {bobSecret}
+            </span>
+          )}
+        </div>
+      )}
+
       {phase === "alice-secret" && (
         <div>
           <div className="ecdh-phase-label alice">Alice chooses a secret</div>

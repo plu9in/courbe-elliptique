@@ -110,10 +110,30 @@ function ParametersCard({ mode, a, b, p, isSingular, isPrimeValid, onSetA, onSet
   );
 }
 
-function PointsCard({ mode, selectedP, selectedQ, result, onClearSelection }: {
+function PointsCard({ mode, selectedP, selectedQ, result, ecdhPhase, alicePub, bobPub, onClearSelection }: {
   mode: FieldMode; selectedP: CurvePoint | null; selectedQ: CurvePoint | null;
-  result: CurvePoint | null; onClearSelection: () => void;
+  result: CurvePoint | null; ecdhPhase: ECDHPhase;
+  alicePub: CurvePoint | null; bobPub: CurvePoint | null;
+  onClearSelection: () => void;
 }) {
+  const isEcdh = ecdhPhase !== "idle";
+
+  if (isEcdh) {
+    return (
+      <CollapsibleCard title="Selected Points" defaultOpen={false} badge={<>{[selectedP, alicePub, bobPub, result].filter(Boolean).length}</>}>
+        <div className="points-list">
+          {selectedP && <span className="point-chip p" style={{ borderColor: "rgba(125, 211, 192, 0.4)", background: "rgba(125, 211, 192, 0.1)", color: "#7DD3C0" }}><span className="dot" style={{ background: "#7DD3C0" }} /> G = {formatCoord(selectedP, mode)}</span>}
+          {alicePub && <span className="point-chip p" style={{ borderColor: "rgba(96, 165, 250, 0.4)", background: "rgba(96, 165, 250, 0.1)", color: "#60A5FA" }}><span className="dot" style={{ background: "#60A5FA" }} /> A = {formatCoord(alicePub, mode)}</span>}
+          {bobPub && <span className="point-chip q" style={{ borderColor: "rgba(244, 114, 182, 0.4)", background: "rgba(244, 114, 182, 0.1)", color: "#F472B6" }}><span className="dot" style={{ background: "#F472B6" }} /> B = {formatCoord(bobPub, mode)}</span>}
+          {result && <span className="point-chip result" style={{ borderColor: "rgba(250, 204, 21, 0.4)", background: "rgba(250, 204, 21, 0.1)", color: "#FACC15" }}><span className="dot" style={{ background: "#FACC15" }} /> S = {formatCoord(result, mode)}</span>}
+        </div>
+        <button className="op-btn" style={{ marginTop: "8px", width: "100%" }} onClick={onClearSelection}>
+          Reset Exchange
+        </button>
+      </CollapsibleCard>
+    );
+  }
+
   const pointCount = [selectedP, selectedQ, result].filter(Boolean).length;
   return (
     <CollapsibleCard title="Selected Points" defaultOpen={false} badge={pointCount > 0 ? <>{pointCount}</> : undefined}>
@@ -142,19 +162,29 @@ export function Sidebar({
   onAdd, onDouble, onInverse, onScalar, onOrbit, onDLP, onECDH, onECDSA, onDoubleAndAdd, onNonceReuse, onSchnorr, onPedersen, onSetScalar, ecdhA, ecdhB, onSetEcdhA, onSetEcdhB, onSelectPreset,
   finiteCurve, ecdhPhase, ecdhAliceSecret, ecdhBobSecret, onStartEcdh, onSetAliceSecret, onSetBobSecret, onEcdhAdvance, onEcdhReset, onSetResultDirect,
 }: Props) {
+  const alicePub = ecdhAliceSecret !== null && selectedP ? finiteCurve.scalarMultiply(selectedP, ecdhAliceSecret) : null;
+  const bobPub = ecdhBobSecret !== null && selectedP ? finiteCurve.scalarMultiply(selectedP, ecdhBobSecret) : null;
+
+  const handleClearOrReset = () => {
+    if (ecdhPhase !== "idle") {
+      onEcdhReset();
+    } else {
+      onClearSelection();
+    }
+  };
+
   return (
     <div className="sidebar">
       <EquationCard mode={mode} a={a} b={b} p={p} />
       <ParametersCard mode={mode} a={a} b={b} p={p} isSingular={isSingular} isPrimeValid={isPrimeValid} onSetA={onSetA} onSetB={onSetB} onSetP={onSetP} />
 
-      {/* Crypto presets — finite and zk modes */}
       {mode !== "real" && (
         <CollapsibleCard title="Crypto Curves" defaultOpen={false} badge={activePresetId ?? undefined}>
           <CryptoPresets onSelect={onSelectPreset} activePresetId={activePresetId} />
         </CollapsibleCard>
       )}
 
-      <PointsCard mode={mode} selectedP={selectedP} selectedQ={selectedQ} result={result} onClearSelection={onClearSelection} />
+      <PointsCard mode={mode} selectedP={selectedP} selectedQ={selectedQ} result={result} ecdhPhase={ecdhPhase} alicePub={alicePub} bobPub={bobPub} onClearSelection={handleClearOrReset} />
 
       {/* ===== Mode: Real or Finite Field ===== */}
       {mode !== "zk" && (
