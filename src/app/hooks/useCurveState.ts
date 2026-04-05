@@ -64,14 +64,17 @@ export interface StepData {
   trails?: { points: CurvePoint[]; color: string; label?: string }[];
   /** Rich gradient paths with numbered points (ECDH interactive) */
   gradientPaths?: GradientPath[];
+  /** Persistent labeled landmark points (A, B, S — always visible even after trail clears) */
+  landmarks?: LabeledPoint[];
 }
 
 export interface GradientPath {
   points: CurvePoint[];
-  startColor: string;   // color of first point
-  endColor: string;     // color of last point (destination)
-  lineColor: string;    // color of the connecting trail line
+  color: string;        // uniform color for dots and line
   startIndex?: number;  // numbering offset (default 1)
+  endLabel?: string;    // label at end point (e.g. "A", "B", "S")
+  endColor?: string;    // distinct color for end point (if different from path)
+  endSize?: number;     // larger radius for destination points
 }
 
 type Action =

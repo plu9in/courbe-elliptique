@@ -332,18 +332,6 @@ function drawTrail(
 
 // ===== Gradient path (ECDH: numbered points with color gradient) =====
 
-function lerpColor(c1: number[], c2: number[], t: number): string {
-  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
-  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
-  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
-  return `rgb(${r}, ${g}, ${b})`;
-}
-
-function parseRgb(color: string): number[] {
-  const m = color.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
-  return m ? [+m[1], +m[2], +m[3]] : [128, 128, 128];
-}
-
 function drawGradientPath(
   ctx: CanvasRenderingContext2D,
   path: GradientPath,
@@ -351,16 +339,12 @@ function drawGradientPath(
   w: number,
   h: number,
 ) {
-  const { points, startColor, endColor, lineColor, startIndex = 1 } = path;
+  const { points, color, startIndex = 1, endLabel, endColor, endSize } = path;
   if (points.length === 0) return;
 
-  const startRgb = parseRgb(startColor);
-  const endRgb = parseRgb(endColor);
-  const lineRgb = parseRgb(lineColor);
-
-  // Draw connecting line
+  // Dashed connecting line
   if (points.length >= 2) {
-    ctx.strokeStyle = lerpColor(lineRgb, lineRgb, 1).replace("rgb", "rgba").replace(")", ", 0.45)");
+    ctx.strokeStyle = color.replace("rgb", "rgba").replace(")", ", 0.5)");
     ctx.lineWidth = 2;
     ctx.setLineDash([5, 4]);
     ctx.beginPath();
@@ -374,20 +358,19 @@ function drawGradientPath(
     ctx.setLineDash([]);
   }
 
-  // Draw points with gradient color and step number
-  const last = points.length - 1;
-  for (let i = 0; i <= last; i++) {
+  // Draw intermediate numbered dots
+  for (let i = 0; i < points.length; i++) {
     const [px, py] = toCanvas(points[i].x, points[i].y, vp, w, h);
-    const t = last > 0 ? i / last : 0;
-    const color = i === last ? endColor : lerpColor(startRgb, endRgb, t);
-    const radius = i === 0 || i === last ? 8 : 6;
+    const isEnd = i === points.length - 1;
+    const dotColor = isEnd && endColor ? endColor : color;
+    const radius = isEnd && endSize ? endSize : (isEnd ? 8 : 5);
 
-    // Glow for first and last
-    if (i === 0 || i === last) {
+    // Glow for end point
+    if (isEnd && endLabel) {
       ctx.beginPath();
-      ctx.arc(px, py, radius + 5, 0, Math.PI * 2);
-      const grad = ctx.createRadialGradient(px, py, radius, px, py, radius + 5);
-      grad.addColorStop(0, color.replace("rgb", "rgba").replace(")", ", 0.3)"));
+      ctx.arc(px, py, radius + 6, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(px, py, radius, px, py, radius + 6);
+      grad.addColorStop(0, dotColor.replace("rgb", "rgba").replace(")", ", 0.3)"));
       grad.addColorStop(1, "transparent");
       ctx.fillStyle = grad;
       ctx.fill();
@@ -396,20 +379,68 @@ function drawGradientPath(
     // Filled circle
     ctx.beginPath();
     ctx.arc(px, py, radius, 0, Math.PI * 2);
-    ctx.fillStyle = color;
+    ctx.fillStyle = dotColor;
     ctx.fill();
     ctx.strokeStyle = "#0D1117";
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
-    // Step number inside the dot
-    const num = startIndex + i;
-    ctx.fillStyle = "#0D1117";
-    ctx.font = `bold ${radius > 6 ? 10 : 8}px 'Fira Code', monospace`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(num), px, py + 0.5);
-    ctx.textBaseline = "alphabetic";
+    // Number inside (skip for labeled endpoints — they get a letter outside)
+    if (!(isEnd && endLabel)) {
+      const num = startIndex + i;
+      ctx.fillStyle = "#0D1117";
+      ctx.font = `bold ${radius > 6 ? 9 : 7}px 'Fira Code', monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(num), px, py + 0.5);
+      ctx.textBaseline = "alphabetic";
+    }
+
+    // External label for endpoint (like P has "P" outside)
+    if (isEnd && endLabel) {
+      ctx.fillStyle = dotColor;
+      ctx.font = "bold 13px 'Fira Code', monospace";
+      ctx.textAlign = "left";
+      ctx.fillText(endLabel, px + radius + 4, py - radius);
+    }
+  }
+}
+
+// Draw persistent landmark labels (A, B, S that stay visible after trail clears)
+function drawLandmarks(
+  ctx: CanvasRenderingContext2D,
+  landmarks: { point: CurvePoint; color: string; label: string }[],
+  vp: Viewport,
+  w: number,
+  h: number,
+) {
+  for (const lm of landmarks) {
+    const [px, py] = toCanvas(lm.point.x, lm.point.y, vp, w, h);
+    const radius = 8;
+
+    // Glow
+    ctx.beginPath();
+    ctx.arc(px, py, radius + 5, 0, Math.PI * 2);
+    const grad = ctx.createRadialGradient(px, py, radius, px, py, radius + 5);
+    grad.addColorStop(0, lm.color.replace("rgb", "rgba").replace(")", ", 0.25)"));
+    grad.addColorStop(1, "transparent");
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // Filled circle
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fillStyle = lm.color;
+    ctx.fill();
+    ctx.strokeStyle = "#0D1117";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // External label
+    ctx.fillStyle = lm.color;
+    ctx.font = "bold 13px 'Fira Code', monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(lm.label, px + radius + 4, py - radius);
   }
 }
 
@@ -535,11 +566,16 @@ export function CurveCanvas({
     // Step visuals (construction lines, trail, extra points)
     const currentStep = steps[currentStepIndex];
 
-    // Gradient paths (ECDH interactive: numbered points with color gradient)
+    // Gradient paths (ECDH interactive: numbered points with color segments)
     if (currentStep?.gradientPaths) {
       for (const gp of currentStep.gradientPaths) {
         drawGradientPath(ctx, gp, vp, w, h);
       }
+    }
+
+    // Persistent landmarks (A, B, S labels that remain after trail clears)
+    if (currentStep?.landmarks) {
+      drawLandmarks(ctx, currentStep.landmarks, vp, w, h);
     }
 
     // Multi-color trails (simple colored trails)
