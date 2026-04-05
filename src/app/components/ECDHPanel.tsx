@@ -3,9 +3,9 @@ import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoi
 import type { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
 import type { ECDHPhase, StepData } from "../hooks/useCurveState.js";
 
-const ALICE_COLOR = "rgba(255, 209, 102, 1)";
-const BOB_COLOR = "rgba(255, 123, 107, 1)";
-const SHARED_COLOR = "rgba(6, 214, 160, 1)";
+const ALICE_COLOR = "rgba(56, 189, 248, 1)";   // sky blue
+const BOB_COLOR = "rgba(236, 72, 153, 1)";     // pink/magenta
+const SHARED_COLOR = "rgba(6, 214, 160, 1)";   // green
 
 interface Props {
   basePoint: CurvePoint | null;
@@ -79,7 +79,7 @@ export function ECDHPanel({
       trails: [{ points: aliceTrail, color: ALICE_COLOR, label: "Alice: G \u2192 aG" }],
       points: [
         { point: G, color: "#7DD3C0", label: "G" },
-        { point: A, color: "#FFD166", label: `A = ${v}G` },
+        { point: A, color: "#38BDF8", label: `A = ${v}G` },
       ],
     }]);
     onAdvance();
@@ -95,7 +95,7 @@ export function ECDHPanel({
       trails: [{ points: aliceTrail, color: ALICE_COLOR, label: "Alice" }],
       points: [
         { point: G, color: "#7DD3C0", label: "G" },
-        { point: A, color: "#FFD166", label: "A (public)" },
+        { point: A, color: "#38BDF8", label: "A (public)" },
       ],
     }]);
     onAdvance();
@@ -123,8 +123,8 @@ export function ECDHPanel({
       ],
       points: [
         { point: G, color: "#7DD3C0", label: "G" },
-        { point: A, color: "#FFD166", label: "A (Alice)" },
-        { point: B, color: "#FF7B6B", label: `B = ${v}G` },
+        { point: A, color: "#38BDF8", label: "A (Alice)" },
+        { point: B, color: "#EC4899", label: `B = ${v}G` },
       ],
     }]);
     onAdvance();
@@ -145,8 +145,8 @@ export function ECDHPanel({
       ],
       points: [
         { point: G, color: "#7DD3C0", label: "G" },
-        { point: A, color: "#FFD166", label: "A (public)" },
-        { point: B, color: "#FF7B6B", label: "B (public)" },
+        { point: A, color: "#38BDF8", label: "A (public)" },
+        { point: B, color: "#EC4899", label: "B (public)" },
       ],
     }]);
     onAdvance();
@@ -173,8 +173,8 @@ export function ECDHPanel({
         { points: bobSharedTrail, color: BOB_COLOR, label: `Bob: A \u2192 ${b}A` },
       ],
       points: [
-        { point: A, color: "#FFD166", label: "A" },
-        { point: B, color: "#FF7B6B", label: "B" },
+        { point: A, color: "#38BDF8", label: "A" },
+        { point: B, color: "#EC4899", label: "B" },
         ...(S ? [{ point: S, color: "#06D6A0", label: `S = ${a * b}G` }] : []),
       ],
     }]);
@@ -272,10 +272,10 @@ export function ECDHPanel({
       {/* Legend */}
       {phase !== "idle" && (
         <div style={{ display: "flex", gap: "12px", marginTop: "10px", flexWrap: "wrap" }}>
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#FFD166" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#38BDF8" }}>
             <span style={{ width: "16px", height: "0", borderTop: "2px dashed #FFD166", display: "inline-block" }} /> Alice
           </span>
-          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#FF7B6B" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", color: "#EC4899" }}>
             <span style={{ width: "16px", height: "0", borderTop: "2px dashed #FF7B6B", display: "inline-block" }} /> Bob
           </span>
           {(phase === "shared" || phase === "done") && (

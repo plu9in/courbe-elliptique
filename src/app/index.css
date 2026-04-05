@@ -555,15 +555,15 @@ input[type="number"]:focus {
 }
 
 .ecdh-phase-label.alice {
-  background: rgba(255, 209, 102, 0.12);
-  color: #FFD166;
-  border-left: 3px solid #FFD166;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38BDF8;
+  border-left: 3px solid #38BDF8;
 }
 
 .ecdh-phase-label.bob {
-  background: rgba(255, 123, 107, 0.12);
-  color: #FF7B6B;
-  border-left: 3px solid #FF7B6B;
+  background: rgba(236, 72, 153, 0.12);
+  color: #EC4899;
+  border-left: 3px solid #EC4899;
 }
 
 .ecdh-phase-label.shared {
@@ -594,11 +594,11 @@ input[type="number"]:focus {
 }
 
 .ecdh-progress-dot.active.alice {
-  background: #FFD166;
+  background: #38BDF8;
 }
 
 .ecdh-progress-dot.active.bob {
-  background: #FF7B6B;
+  background: #EC4899;
 }
 
 .ecdh-progress-dot.active.shared {
