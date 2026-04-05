@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import katex from "katex";
-import type { StepData } from "../hooks/useCurveState.js";
+import type { StepData, ComputationRow } from "../hooks/useCurveState.js";
 
 interface Props {
   steps: StepData[];
@@ -24,73 +24,30 @@ function KaTeX({ formula }: { formula: string }) {
   return <span ref={ref} className="step-formula" />;
 }
 
-/** Parse a computation formula string into table rows */
-function ComputationTable({ formula }: { formula: string }) {
-  // Check if this is an aligned KaTeX formula — if so, parse it into a table
-  if (!formula.includes("\\begin{aligned}")) {
-    return <KaTeX formula={formula} />;
-  }
-
-  // Extract lines from aligned environment
-  const inner = formula.replace(/\\begin\{aligned\}/, "").replace(/\\end\{aligned\}/, "");
-  const lines = inner.split("\\\\").map((l) => l.replace(/^[&\s]+/, "").trim()).filter(Boolean);
-
-  if (lines.length === 0) return <KaTeX formula={formula} />;
-
-  // First line is the operation header
-  const header = lines[0];
-  const compLines = lines.slice(1);
-
+function ComputationTable({ rows }: { rows: ComputationRow[] }) {
   return (
-    <div>
-      <div style={{ fontSize: "12px", color: "var(--md-sys-color-on-surface)", marginBottom: "3px" }}>
-        <KaTeX formula={header} />
-      </div>
-      {compLines.length > 0 && (
-        <div className="step-computation">
-          {compLines.map((line, i) => {
-            // Each line has format: "label = formula \\equiv result \\pmod{p}"
-            // Split on \\equiv to get parts
-            const parts = line.split(/\\equiv/);
-            if (parts.length >= 2) {
-              const lhs = parts[0].trim();
-              const rest = parts.slice(1).join("\\equiv ");
-              // Split rest on \\pmod or \\!\\!\\!\\pmod
-              const modMatch = rest.match(/(.+?)\\!*\\\\pmod\{(\d+)\}/);
-              if (modMatch) {
-                const middle = modMatch[1].trim();
-                const mod = modMatch[2];
-                // Try to split middle further on \\equiv
-                const midParts = middle.split(/\\equiv/);
-                if (midParts.length >= 2) {
-                  return (
-                    <div key={i} style={{ display: "contents" }}>
-                      <span className="comp-formula"><KaTeX formula={lhs.replace(/^\s*&?\s*/, "")} /></span>
-                      <span className="comp-subst"><KaTeX formula={`\\equiv ${midParts[0].trim()}`} /></span>
-                      <span className="comp-simplify"><KaTeX formula={`\\equiv ${midParts[1].trim()}`} /></span>
-                      <span className="comp-result"><KaTeX formula={`\\pmod{${mod}}`} /></span>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={i} style={{ display: "contents" }}>
-                    <span className="comp-formula"><KaTeX formula={lhs.replace(/^\s*&?\s*/, "")} /></span>
-                    <span className="comp-subst"><KaTeX formula={`\\equiv ${middle}`} /></span>
-                    <span className="comp-result" style={{ gridColumn: "span 2" }}><KaTeX formula={`\\pmod{${mod}}`} /></span>
-                  </div>
-                );
-              }
-            }
-            // Fallback: render the whole line
-            return (
-              <div key={i} style={{ display: "contents" }}>
-                <span className="comp-formula" style={{ gridColumn: "1 / -1" }}><KaTeX formula={line.replace(/^\s*&?\s*/, "")} /></span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
+    <table className="comp-table">
+      <thead>
+        <tr>
+          <th>Step</th>
+          <th>Formula</th>
+          <th>Substitution</th>
+          <th>Simplification</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row, i) => (
+          <tr key={i}>
+            <td className="comp-cell-label">{row.label}</td>
+            <td className="comp-cell-formula">{row.description}</td>
+            <td className="comp-cell-subst">{row.substitution}</td>
+            <td className="comp-cell-mid">{row.intermediate ?? ""}</td>
+            <td className="comp-cell-result">{row.result}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -122,7 +79,8 @@ export function StepPanel({ steps, currentStepIndex, onNext, onPrev, onSkipToEnd
           <span className="step-label">{step.label}</span>
           <span className="step-explanation">{step.explanation}</span>
         </div>
-        {step.formula && <ComputationTable formula={step.formula} />}
+        {step.computation && <ComputationTable rows={step.computation} />}
+        {step.formula && !step.computation && <KaTeX formula={step.formula} />}
       </div>
     </div>
   );

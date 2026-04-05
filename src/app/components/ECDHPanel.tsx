@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
 import type { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
-import type { ECDHPhase, StepData, GradientPath, LabeledPoint } from "../hooks/useCurveState.js";
+import type { ECDHPhase, StepData, GradientPath, LabeledPoint, ComputationRow } from "../hooks/useCurveState.js";
 
 // Path colors
 const ALICE_PATH = "rgb(96, 165, 250)";     // blue
@@ -66,36 +66,86 @@ export function ECDHPanel({
 
   // === Step generators for each phase ===
 
-  function modularFormula(k: number, base: CurvePoint, baseName: string, trail: CurvePoint[]): string | undefined {
+  function computeStep(k: number, base: CurvePoint, baseName: string, prevName: string, trail: CurvePoint[]): { header: string; computation?: ComputationRow[] } {
     const pp = curve.p;
     const mod = (n: number) => ((n % pp) + pp) % pp;
-    if (k === 1) return `1 \\cdot ${baseName} = ${baseName} = (${trail[0].x},\\, ${trail[0].y})`;
+
+    if (k === 1) {
+      return { header: `1\u00b7${baseName} = ${baseName} = (${trail[0].x}, ${trail[0].y})` };
+    }
+
     const prev = trail[k - 2];
     const cur = trail[k - 1];
-    if (k === 2 && prev.x === base.x && prev.y === base.y) {
-      const s = mod((3 * base.x * base.x + curve.a) * curve.modInverse(2 * base.y));
-      return [
-        `\\begin{aligned}`,
-        `&${k}${baseName} = \\text{double}(${baseName})`,
-        `\\\\ &s \\equiv (3 \\cdot ${base.x}^2 + ${curve.a}) \\cdot (2 \\cdot ${base.y})^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}}`,
-        `\\\\ &x_R \\equiv ${s}^2 - 2 \\cdot ${base.x} \\equiv ${cur.x} \\!\\!\\!\\pmod{${pp}}`,
-        `\\\\ &y_R \\equiv ${s} \\cdot (${base.x} - ${cur.x}) - ${base.y} \\equiv ${cur.y} \\!\\!\\!\\pmod{${pp}}`,
-        `\\end{aligned}`,
-      ].join(" ");
+    const isDouble = k === 2 && prev.x === base.x && prev.y === base.y;
+
+    if (isDouble) {
+      const twoY = mod(2 * base.y);
+      const twoYInv = curve.modInverse(twoY);
+      const num = mod(3 * base.x * base.x + curve.a);
+      const s = mod(num * twoYInv);
+      return {
+        header: `${k}\u00b7${baseName} = ${baseName} + ${baseName} = doubling (tangent)`,
+        computation: [
+          {
+            label: "Slope (tangent)",
+            description: `s = (3x\u00b2 + a) / (2y) mod p`,
+            substitution: `= (3\u00b7${base.x}\u00b2 + ${curve.a}) \u00b7 (2\u00b7${base.y})\u207b\u00b9`,
+            intermediate: `= ${num} \u00b7 ${twoY}\u207b\u00b9 = ${num} \u00b7 ${twoYInv}`,
+            result: `\u2261 ${s} (mod ${pp})`,
+          },
+          {
+            label: "New x",
+            description: `x\u2083 = s\u00b2 \u2212 2\u00b7x mod p`,
+            substitution: `= ${s}\u00b2 \u2212 2\u00b7${base.x}`,
+            intermediate: `= ${s * s} \u2212 ${2 * base.x}`,
+            result: `\u2261 ${cur.x} (mod ${pp})`,
+          },
+          {
+            label: "New y",
+            description: `y\u2083 = s\u00b7(x \u2212 x\u2083) \u2212 y mod p`,
+            substitution: `= ${s}\u00b7(${base.x} \u2212 ${cur.x}) \u2212 ${base.y}`,
+            intermediate: `= ${s}\u00b7${mod(base.x - cur.x)} \u2212 ${base.y}`,
+            result: `\u2261 ${cur.y} (mod ${pp})`,
+          },
+        ],
+      };
     }
+
+    // Addition: k·base = prev + base
     const dx = mod(base.x - prev.x);
     const dy = mod(base.y - prev.y);
     try {
-      const s = mod(dy * curve.modInverse(dx));
-      return [
-        `\\begin{aligned}`,
-        `&${k}${baseName} = (${prev.x},${prev.y}) + (${base.x},${base.y})`,
-        `\\\\ &s \\equiv (${base.y} - ${prev.y}) \\cdot (${base.x} - ${prev.x})^{-1} \\equiv ${dy} \\cdot ${dx}^{-1} \\equiv ${s} \\!\\!\\!\\pmod{${pp}}`,
-        `\\\\ &x_R \\equiv ${s}^2 - ${prev.x} - ${base.x} \\equiv ${cur.x} \\!\\!\\!\\pmod{${pp}}`,
-        `\\\\ &y_R \\equiv ${s} \\cdot (${prev.x} - ${cur.x}) - ${prev.y} \\equiv ${cur.y} \\!\\!\\!\\pmod{${pp}}`,
-        `\\end{aligned}`,
-      ].join(" ");
-    } catch { return undefined; }
+      const dxInv = curve.modInverse(dx);
+      const s = mod(dy * dxInv);
+      return {
+        header: `${k}\u00b7${baseName} = ${prevName} + ${baseName} = (${prev.x}, ${prev.y}) + (${base.x}, ${base.y})`,
+        computation: [
+          {
+            label: "Slope (secant)",
+            description: `s = (y${baseName} \u2212 y${prevName}) / (x${baseName} \u2212 x${prevName}) mod p`,
+            substitution: `= (${base.y} \u2212 ${prev.y}) \u00b7 (${base.x} \u2212 ${prev.x})\u207b\u00b9`,
+            intermediate: `= ${dy} \u00b7 ${dx}\u207b\u00b9 = ${dy} \u00b7 ${dxInv}`,
+            result: `\u2261 ${s} (mod ${pp})`,
+          },
+          {
+            label: "New x",
+            description: `x\u2083 = s\u00b2 \u2212 x${prevName} \u2212 x${baseName} mod p`,
+            substitution: `= ${s}\u00b2 \u2212 ${prev.x} \u2212 ${base.x}`,
+            intermediate: `= ${s * s} \u2212 ${prev.x + base.x}`,
+            result: `\u2261 ${cur.x} (mod ${pp})`,
+          },
+          {
+            label: "New y",
+            description: `y\u2083 = s\u00b7(x${prevName} \u2212 x\u2083) \u2212 y${prevName} mod p`,
+            substitution: `= ${s}\u00b7(${prev.x} \u2212 ${cur.x}) \u2212 ${prev.y}`,
+            intermediate: `= ${s}\u00b7${mod(prev.x - cur.x)} \u2212 ${prev.y}`,
+            result: `\u2261 ${cur.y} (mod ${pp})`,
+          },
+        ],
+      };
+    } catch {
+      return { header: `${k}\u00b7${baseName} = ${prevName} + ${baseName} (vertical line \u2192 O)` };
+    }
   }
 
   function makeAliceSteps(a: number): StepData[] {
@@ -104,10 +154,12 @@ export function ECDHPanel({
     for (let k = 1; k <= a; k++) {
       const partial = fullTrail.slice(0, k);
       const isLast = k === a;
+      const prevName = k > 1 ? `${k - 1}G` : "G";
+      const step = computeStep(k, G, "G", prevName, fullTrail);
       steps.push({
         label: `Alice: ${k}G`,
         explanation: isLast ? `A = ${a}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
-        formula: modularFormula(k, G, "G", fullTrail),
+        computation: step.computation,
         gradientPaths: [{
           points: partial,
           color: ALICE_PATH,
@@ -128,10 +180,12 @@ export function ECDHPanel({
     for (let k = 1; k <= b; k++) {
       const partial = fullTrail.slice(0, k);
       const isLast = k === b;
+      const prevName = k > 1 ? `${k - 1}G` : "G";
+      const bStep = computeStep(k, G, "G", prevName, fullTrail);
       steps.push({
         label: `Bob: ${k}G`,
         explanation: isLast ? `B = ${b}G = (${partial[k - 1].x}, ${partial[k - 1].y})` : `${k}G = (${partial[k - 1].x}, ${partial[k - 1].y})`,
-        formula: modularFormula(k, G, "G", fullTrail),
+        computation: bStep.computation,
         gradientPaths: [{
           points: partial,
           color: BOB_PATH,
@@ -189,12 +243,14 @@ export function ECDHPanel({
         lastPath.endSize = 10;
       }
 
+      const prevName = k > 1 ? `${k - 1}\u00b7B` : "B";
+      const sStep = computeStep(k, bobPub, "B", prevName, fullTrail);
       steps.push({
         label: isLast ? `S = ${a}\u00b7B` : `${k}\u00b7B`,
         explanation: isLast
           ? `S = ${a}\u00b7B = ${a}\u00b7${b}G = ${a * b}G = (${current.x}, ${current.y})`
           : `${k}\u00b7B = (${current.x}, ${current.y})`,
-        formula: modularFormula(k, bobPub, "B", fullTrail),
+        computation: sStep.computation,
         gradientPaths: paths,
         landmarks: allLandmarks,
       });

@@ -66,6 +66,16 @@ export interface StepData {
   gradientPaths?: GradientPath[];
   /** Persistent labeled landmark points (A, B, S — always visible even after trail clears) */
   landmarks?: LabeledPoint[];
+  /** Structured computation table for pedagogical display */
+  computation?: ComputationRow[];
+}
+
+export interface ComputationRow {
+  label: string;       // e.g. "Slope"
+  description: string; // e.g. "s = (yB - y_prev) / (xB - x_prev) mod p"
+  substitution: string; // e.g. "= (18 - 10) · (10 - 9)⁻¹"
+  intermediate?: string; // e.g. "= 8 · 1"  (optional simplification)
+  result: string;      // e.g. "≡ 8 (mod 23)"
 }
 
 export interface GradientPath {

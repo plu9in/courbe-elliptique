@@ -94,7 +94,7 @@ body {
   grid-template-areas:
     "header header"
     "sidebar canvas"
-    "steps  steps";
+    "sidebar steps";
   height: 100vh;
   gap: 0;
 }
@@ -540,38 +540,61 @@ input[type="number"]:focus {
 }
 
 /* Computation table for modular arithmetic */
-.step-computation {
-  display: grid;
-  grid-template-columns: auto auto auto auto auto;
-  gap: 1px 12px;
-  align-items: baseline;
-  margin-top: 4px;
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 6px;
   font-family: var(--md-sys-typescale-code-font);
-  font-size: 12px;
+  font-size: 11px;
+  table-layout: fixed;
+}
+
+.comp-table th {
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--md-sys-color-on-surface-variant);
+  text-align: left;
+  padding: 2px 8px 4px;
+  border-bottom: 1px solid var(--md-sys-color-outline-variant);
   white-space: nowrap;
 }
 
-.step-computation .comp-label {
-  color: var(--md-sys-color-on-surface-variant);
-  text-align: right;
-  padding-right: 4px;
+.comp-table th:nth-child(1) { width: 12%; }
+.comp-table th:nth-child(2) { width: 28%; }
+.comp-table th:nth-child(3) { width: 24%; }
+.comp-table th:nth-child(4) { width: 18%; }
+.comp-table th:nth-child(5) { width: 18%; }
+
+.comp-table td {
+  padding: 3px 8px;
+  vertical-align: top;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.step-computation .comp-formula {
+.comp-cell-label {
+  color: var(--md-sys-color-on-surface);
+  font-weight: 500;
+}
+
+.comp-cell-formula {
+  color: var(--md-sys-color-on-surface-variant);
+}
+
+.comp-cell-subst {
   color: var(--md-sys-color-on-surface);
 }
 
-.step-computation .comp-subst {
+.comp-cell-mid {
   color: var(--md-sys-color-on-surface-variant);
 }
 
-.step-computation .comp-simplify {
-  color: var(--md-sys-color-on-surface-variant);
-}
-
-.step-computation .comp-result {
+.comp-cell-result {
   color: var(--md-sys-color-primary);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .step-idle {
