@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import type { EllipticCurve } from "../../curve-visualization/domain/model/EllipticCurve.js";
 import type { FiniteFieldCurve } from "../../curve-visualization/domain/model/FiniteFieldCurve.js";
 import type { CurvePoint } from "../../curve-visualization/domain/model/CurvePoint.js";
-import type { FieldMode, StepData, ModularLine } from "../hooks/useCurveState.js";
+import type { FieldMode, StepData, ModularLine, GradientPath } from "../hooks/useCurveState.js";
 
 interface Viewport {
   xMin: number; xMax: number;
@@ -330,6 +330,89 @@ function drawTrail(
   }
 }
 
+// ===== Gradient path (ECDH: numbered points with color gradient) =====
+
+function lerpColor(c1: number[], c2: number[], t: number): string {
+  const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
+  const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
+  const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function parseRgb(color: string): number[] {
+  const m = color.match(/(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  return m ? [+m[1], +m[2], +m[3]] : [128, 128, 128];
+}
+
+function drawGradientPath(
+  ctx: CanvasRenderingContext2D,
+  path: GradientPath,
+  vp: Viewport,
+  w: number,
+  h: number,
+) {
+  const { points, startColor, endColor, lineColor, startIndex = 1 } = path;
+  if (points.length === 0) return;
+
+  const startRgb = parseRgb(startColor);
+  const endRgb = parseRgb(endColor);
+  const lineRgb = parseRgb(lineColor);
+
+  // Draw connecting line
+  if (points.length >= 2) {
+    ctx.strokeStyle = lerpColor(lineRgb, lineRgb, 1).replace("rgb", "rgba").replace(")", ", 0.45)");
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
+    ctx.beginPath();
+    const [sx, sy] = toCanvas(points[0].x, points[0].y, vp, w, h);
+    ctx.moveTo(sx, sy);
+    for (let i = 1; i < points.length; i++) {
+      const [px, py] = toCanvas(points[i].x, points[i].y, vp, w, h);
+      ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Draw points with gradient color and step number
+  const last = points.length - 1;
+  for (let i = 0; i <= last; i++) {
+    const [px, py] = toCanvas(points[i].x, points[i].y, vp, w, h);
+    const t = last > 0 ? i / last : 0;
+    const color = i === last ? endColor : lerpColor(startRgb, endRgb, t);
+    const radius = i === 0 || i === last ? 8 : 6;
+
+    // Glow for first and last
+    if (i === 0 || i === last) {
+      ctx.beginPath();
+      ctx.arc(px, py, radius + 5, 0, Math.PI * 2);
+      const grad = ctx.createRadialGradient(px, py, radius, px, py, radius + 5);
+      grad.addColorStop(0, color.replace("rgb", "rgba").replace(")", ", 0.3)"));
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    // Filled circle
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.strokeStyle = "#0D1117";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Step number inside the dot
+    const num = startIndex + i;
+    ctx.fillStyle = "#0D1117";
+    ctx.font = `bold ${radius > 6 ? 10 : 8}px 'Fira Code', monospace`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(num), px, py + 0.5);
+    ctx.textBaseline = "alphabetic";
+  }
+}
+
 // ===== Labeled points =====
 
 function drawLabeledPoint(
@@ -452,7 +535,14 @@ export function CurveCanvas({
     // Step visuals (construction lines, trail, extra points)
     const currentStep = steps[currentStepIndex];
 
-    // Multi-color trails (ECDH: Alice + Bob paths)
+    // Gradient paths (ECDH interactive: numbered points with color gradient)
+    if (currentStep?.gradientPaths) {
+      for (const gp of currentStep.gradientPaths) {
+        drawGradientPath(ctx, gp, vp, w, h);
+      }
+    }
+
+    // Multi-color trails (simple colored trails)
     if (currentStep?.trails) {
       for (const t of currentStep.trails) {
         drawTrail(ctx, t.points, vp, w, h, t.color);

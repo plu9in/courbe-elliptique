@@ -60,8 +60,18 @@ export interface StepData {
   points?: LabeledPoint[];
   /** Single-color trail (orbit, DLP search — rendered in green) */
   trail?: CurvePoint[];
-  /** Multi-color trails (ECDH — Alice amber, Bob coral, shared green) */
+  /** Multi-color trails (ECDH) */
   trails?: { points: CurvePoint[]; color: string; label?: string }[];
+  /** Rich gradient paths with numbered points (ECDH interactive) */
+  gradientPaths?: GradientPath[];
+}
+
+export interface GradientPath {
+  points: CurvePoint[];
+  startColor: string;   // color of first point
+  endColor: string;     // color of last point (destination)
+  lineColor: string;    // color of the connecting trail line
+  startIndex?: number;  // numbering offset (default 1)
 }
 
 type Action =
